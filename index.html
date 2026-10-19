@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>모두의 화장실 만들기</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Do+Hyeon&family=Gothic+A1:wght@400;600;800&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<!--APP-START-->
+<div class="app" id="app">
+  <header class="top">
+    <h1 class="title">모두의 화장실 <span>만들기</span></h1>
+    <div class="visitors" id="visitors" aria-label="이용객"></div>
+    <div class="actions">
+      <button type="button" class="btn ghost" id="btn-sample">예시 보기</button>
+      <button type="button" class="btn ghost" id="btn-reset">처음부터</button>
+      <button type="button" class="btn primary" id="btn-test">▶ 테스트하기</button>
+    </div>
+  </header>
+
+  <nav class="palette" id="palette" aria-label="설치할 물건"></nav>
+
+  <main class="board-wrap" id="board-wrap">
+    <canvas id="board" aria-label="화장실 보드"></canvas>
+    <div class="zoom">
+      <button type="button" class="zbtn" id="btn-pan" aria-pressed="false" title="화면 옮기기">✋</button>
+      <button type="button" class="zbtn" id="btn-zoom-in" title="확대">＋</button>
+      <button type="button" class="zbtn" id="btn-zoom-out" title="축소">－</button>
+      <button type="button" class="zbtn" id="btn-fit" title="화면에 맞추기">⤢</button>
+    </div>
+    <div class="rotate-hint" id="rotate-hint" hidden>
+      화면을 가로로 돌리면 더 크게 보여요
+      <button type="button" class="link" id="btn-hide-hint">닫기</button>
+    </div>
+  </main>
+
+  <footer class="info" id="info" aria-live="polite"></footer>
+
+  <div class="confirm" id="confirm" hidden>
+    <div class="sheet">
+      <p id="confirm-text"></p>
+      <div class="sheet-actions">
+        <button type="button" class="btn ghost" id="confirm-no">취소</button>
+        <button type="button" class="btn primary" id="confirm-yes">확인</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="result" id="result" hidden>
+    <div class="sheet">
+      <h2 id="result-title"></h2>
+      <ul id="result-list"></ul>
+      <div class="sheet-actions">
+        <button type="button" class="btn primary" id="result-close">계속 꾸미기</button>
+      </div>
+    </div>
+  </div>
+</div>
+<!--APP-END-->
+<script src="js/config.js"></script>
+<script src="js/logic.js"></script>
+<script src="js/game.js"></script>
+</body>
+</html>
