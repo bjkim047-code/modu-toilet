@@ -3,7 +3,7 @@
   var cfg = MODU_CONFIG;
   var L = ModuLogic;
   var COLS = cfg.cols, ROWS = cfg.rows;
-  var SAVE_KEY = 'modu-toilet-board-v1';
+  var SAVE_KEY = 'modu-toilet-board-v2';
   var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   var $ = function (id) { return document.getElementById(id); };
@@ -11,8 +11,9 @@
   var wrap = $('board-wrap');
 
   var state = {
-    board: load() || L.sampleBoard(cfg),
-    tool: 'wall',
+    board: load() || L.createBoard(cfg),
+    tool: 'toilet',
+    selected: -1,    // 선택한 설비 번호
     cam: { scale: 20, ox: 0, oy: 0, fit: 20 },
     hover: null,
     pan: false,
@@ -29,22 +30,21 @@
     img.src = src;
   }
   cfg.items.forEach(function (it) { tryImage('item:' + it.id, 'assets/items/' + it.id + '.png'); });
-  ['floor', 'entrance'].forEach(function (id) { tryImage('item:' + id, 'assets/items/' + id + '.png'); });
+  ['floor', 'wall', 'entrance'].forEach(function (id) { tryImage('item:' + id, 'assets/items/' + id + '.png'); });
   cfg.visitors.forEach(function (v) {
     ['normal', 'happy', 'sad'].forEach(function (f) { tryImage('visitor:' + v.id + ':' + f, 'assets/visitors/' + v.id + '_' + f + '.png'); });
   });
 
   // ---------- 저장 ----------
   function save() {
-    try { localStorage.setItem(SAVE_KEY, JSON.stringify({ base: state.board.base, obj: state.board.obj })); } catch (e) {}
+    try { localStorage.setItem(SAVE_KEY, JSON.stringify(state.board)); } catch (e) {}
   }
   function load() {
     try {
       var d = JSON.parse(localStorage.getItem(SAVE_KEY));
-      if (!d || d.base.length !== ROWS || d.base[0].length !== COLS) return null;
-      var b = L.createBoard(cfg);
-      b.base = d.base; b.obj = d.obj;
-      return b;
+      if (!d || d.cols !== COLS || d.rows !== ROWS || !Array.isArray(d.objects)) return null;
+      d.objects = d.objects.filter(function (o) { return L.itemById(cfg, o.id); });
+      return d;
     } catch (e) { return null; }
   }
 
@@ -52,8 +52,6 @@
   var C = {
     floor: '#f4f2ec', floorLine: '#e2ded3',
     wall: '#3f4654', wallTop: '#575f6f',
-    partFull: '#7d8ca6', partLow: '#aab6c9',
-    door: '#b47a46', doorDark: '#8a5a30',
     tactile: '#f2c230', tactileDot: '#c99a12',
     entrance: '#3fa66b'
   };
@@ -64,38 +62,6 @@
     c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath();
   }
 
-  function drawBase(c, id, x, y, s) {
-    var img = images['item:' + id];
-    if (id !== 'floor' && id !== 'entrance') drawFloor(c, x, y, s);
-    if (img) { c.drawImage(img, x, y, s, s); return; }
-    if (id === 'floor') return drawFloor(c, x, y, s);
-    if (id === 'wall') {
-      c.fillStyle = C.wall; c.fillRect(x, y, s, s);
-      c.fillStyle = C.wallTop; c.fillRect(x, y, s, s * 0.22);
-    } else if (id === 'partFull') {
-      c.fillStyle = C.partFull; c.fillRect(x + s * 0.12, y, s * 0.76, s);
-      c.fillStyle = 'rgba(255,255,255,0.35)'; c.fillRect(x + s * 0.12, y, s * 0.12, s);
-    } else if (id === 'partLow') {
-      c.fillStyle = C.partLow; c.fillRect(x + s * 0.12, y + s * 0.18, s * 0.76, s * 0.6);
-      c.strokeStyle = C.partFull; c.lineWidth = Math.max(1, s * 0.06);
-      c.setLineDash([s * 0.12, s * 0.1]);
-      c.beginPath(); c.moveTo(x + s * 0.12, y + s * 0.9); c.lineTo(x + s * 0.88, y + s * 0.9); c.stroke();
-      c.beginPath(); c.moveTo(x + s * 0.12, y + s * 0.07); c.lineTo(x + s * 0.88, y + s * 0.07); c.stroke();
-      c.setLineDash([]);
-    } else if (id === 'door') {
-      c.fillStyle = C.door; roundRect(c, x + s * 0.08, y + s * 0.08, s * 0.84, s * 0.84, s * 0.12); c.fill();
-      c.fillStyle = C.doorDark; c.beginPath(); c.arc(x + s * 0.72, y + s * 0.5, s * 0.08, 0, 7); c.fill();
-    } else if (id === 'tactile') {
-      c.fillStyle = C.tactile; c.fillRect(x, y, s, s);
-      c.fillStyle = C.tactileDot;
-      for (var i = 0; i < 3; i++) for (var j = 0; j < 3; j++) {
-        c.beginPath(); c.arc(x + s * (0.2 + i * 0.3), y + s * (0.2 + j * 0.3), s * 0.07, 0, 7); c.fill();
-      }
-    } else if (id === 'entrance') {
-      c.fillStyle = C.entrance; c.fillRect(x, y, s, s);
-    }
-  }
-
   function drawFloor(c, x, y, s) {
     var img = images['item:floor'];
     if (img) { c.drawImage(img, x, y, s, s); return; }
@@ -104,40 +70,31 @@
     c.strokeRect(x + 0.5, y + 0.5, s - 1, s - 1);
   }
 
-  function drawObj(c, id, x, y, s, baseId) {
-    var img = images['item:' + id];
+  function drawWall(c, x, y, s) {
+    var img = images['item:wall'];
     if (img) { c.drawImage(img, x, y, s, s); return; }
-    var it = L.itemById(cfg, id);
-    if (id === 'grabBar') {
-      c.strokeStyle = '#f08a24'; c.lineWidth = s * 0.16; c.lineCap = 'round';
-      c.beginPath(); c.moveTo(x + s * 0.2, y + s * 0.5); c.lineTo(x + s * 0.8, y + s * 0.5); c.stroke();
-      c.strokeStyle = '#ffd09a'; c.lineWidth = s * 0.05;
-      c.beginPath(); c.moveTo(x + s * 0.25, y + s * 0.46); c.lineTo(x + s * 0.75, y + s * 0.46); c.stroke();
-      c.lineCap = 'butt';
-      return;
+    c.fillStyle = C.wall; c.fillRect(x, y, s, s);
+    c.fillStyle = C.wallTop; c.fillRect(x, y, s, s * 0.22);
+  }
+
+  function drawTactile(c, x, y, s) {
+    var img = images['item:tactile'];
+    if (img) { c.drawImage(img, x, y, s, s); return; }
+    c.fillStyle = C.tactile; c.fillRect(x, y, s, s);
+    c.fillStyle = C.tactileDot;
+    for (var i = 0; i < 3; i++) for (var j = 0; j < 3; j++) {
+      c.beginPath(); c.arc(x + s * (0.2 + i * 0.3), y + s * (0.2 + j * 0.3), s * 0.07, 0, 7); c.fill();
     }
-    if (id === 'braille') {
-      c.fillStyle = '#ffffff'; roundRect(c, x + s * 0.18, y + s * 0.18, s * 0.64, s * 0.64, s * 0.1); c.fill();
-      c.fillStyle = '#1d5fb8';
-      [[0, 0], [0, 1], [1, 1], [0, 2], [1, 0]].forEach(function (p) {
-        c.beginPath(); c.arc(x + s * (0.4 + p[0] * 0.2), y + s * (0.32 + p[1] * 0.18), s * 0.06, 0, 7); c.fill();
-      });
-      return;
-    }
-    if (it && it.layer === 'wall') {
-      c.fillStyle = '#ffffff'; roundRect(c, x + s * 0.12, y + s * 0.12, s * 0.76, s * 0.76, s * 0.12); c.fill();
-    } else {
-      c.fillStyle = id === 'sinkLow' ? '#cfeee6' : '#ffffff';
-      roundRect(c, x + s * 0.06, y + s * 0.06, s * 0.88, s * 0.88, s * 0.18); c.fill();
-      c.strokeStyle = 'rgba(0,0,0,0.18)'; c.lineWidth = 1; c.stroke();
-    }
-    drawEmoji(c, it ? it.emoji : '?', x + s / 2, y + s / 2, s * 0.62);
-    if (id === 'sinkLow') {
-      c.fillStyle = '#1f7f66';
-      c.font = '800 ' + Math.round(s * 0.34) + 'px ' + getComputedStyle(document.body).fontFamily;
-      c.textAlign = 'right'; c.textBaseline = 'bottom';
-      c.fillText('↓', x + s * 0.96, y + s * 1.0);
-    }
+  }
+
+  function drawBraille(c, x, y, s) {
+    var img = images['item:braille'];
+    if (img) { c.drawImage(img, x, y, s, s); return; }
+    c.fillStyle = '#ffffff'; roundRect(c, x + s * 0.14, y + s * 0.14, s * 0.72, s * 0.72, s * 0.1); c.fill();
+    c.fillStyle = '#1d5fb8';
+    [[0, 0], [0, 1], [1, 1], [0, 2], [1, 0]].forEach(function (p) {
+      c.beginPath(); c.arc(x + s * (0.4 + p[0] * 0.2), y + s * (0.32 + p[1] * 0.18), s * 0.06, 0, 7); c.fill();
+    });
   }
 
   function drawEmoji(c, e, cx, cy, size) {
@@ -147,19 +104,68 @@
     c.fillText(e, cx, cy + size * 0.06);
   }
 
+  // 설비 하나 그리기. (x, y)는 픽셀 좌표, rot은 0~3
+  function drawObject(c, id, rot, x, y, s, alpha) {
+    var it = L.itemById(cfg, id);
+    var bw = it.w * s, bh = it.h * s;         // 기본 방향 크기
+    var w = rot % 2 ? bh : bw, h = rot % 2 ? bw : bh;
+    c.save();
+    if (alpha !== undefined) c.globalAlpha = alpha;
+    var img = images['item:' + id];
+    if (img) {
+      c.translate(x + w / 2, y + h / 2);
+      c.rotate(rot * Math.PI / 2);
+      c.drawImage(img, -bw / 2, -bh / 2, bw, bh);
+      c.restore();
+      return;
+    }
+    var pad = s * 0.08;
+    if (id === 'grabBar') {
+      var horizontal = w > h;
+      c.strokeStyle = it.color; c.lineWidth = s * 0.3; c.lineCap = 'round';
+      c.beginPath();
+      if (horizontal) { c.moveTo(x + s * 0.4, y + h / 2); c.lineTo(x + w - s * 0.4, y + h / 2); }
+      else { c.moveTo(x + w / 2, y + s * 0.4); c.lineTo(x + w / 2, y + h - s * 0.4); }
+      c.stroke();
+      c.restore();
+      return;
+    }
+    c.fillStyle = it.color || '#ffffff';
+    roundRect(c, x + pad, y + pad, w - pad * 2, h - pad * 2, s * 0.3); c.fill();
+    c.strokeStyle = 'rgba(0,0,0,0.22)'; c.lineWidth = 1.5; c.stroke();
+    // 벽에 붙는 쪽 표시 (기본 방향은 위쪽)
+    c.fillStyle = 'rgba(40,52,70,0.55)';
+    var t = Math.max(2, s * 0.22);
+    if (rot === 0) c.fillRect(x + pad * 2, y + pad, w - pad * 4, t);
+    if (rot === 1) c.fillRect(x + w - pad - t, y + pad * 2, t, h - pad * 4);
+    if (rot === 2) c.fillRect(x + pad * 2, y + h - pad - t, w - pad * 4, t);
+    if (rot === 3) c.fillRect(x + pad, y + pad * 2, t, h - pad * 4);
+    drawEmoji(c, it.emoji, x + w / 2, y + h / 2, Math.min(w, h) * 0.55);
+    if (id === 'sinkLow') {
+      c.fillStyle = '#1f7f66';
+      c.font = '800 ' + Math.round(s * 0.8) + 'px sans-serif';
+      c.textAlign = 'right'; c.textBaseline = 'bottom';
+      c.fillText('↓', x + w - pad * 1.5, y + h - pad * 0.5);
+    }
+    c.restore();
+  }
+
   // ---------- 화면 크기와 카메라 ----------
   var dpr = 1;
+  var hintHidden = false;
   function resize() {
     dpr = window.devicePixelRatio || 1;
     var r = wrap.getBoundingClientRect();
     canvas.width = Math.round(r.width * dpr);
     canvas.height = Math.round(r.height * dpr);
     var prevFit = state.cam.fit;
-    var fit = Math.min(r.width / COLS, r.height / ROWS);
-    state.cam.fit = fit;
+    state.cam.fit = Math.min(r.width / COLS, r.height / ROWS);
     if (!state.cam.zoomed || !prevFit) fitView(); else clampCam();
-    $('rotate-hint').hidden = !(window.innerWidth < 600 && window.innerHeight > window.innerWidth && !hintHidden);
+    updateHint();
     state.dirty = true;
+  }
+  function updateHint() {
+    $('rotate-hint').hidden = !(window.innerWidth < 600 && window.innerHeight > window.innerWidth && !hintHidden && state.selected === -1);
   }
   function fitView() {
     var r = wrap.getBoundingClientRect();
@@ -201,23 +207,56 @@
     ctx.save();
     ctx.translate(cam.ox, cam.oy);
     var x, y;
-    for (y = 0; y < ROWS; y++) for (x = 0; x < COLS; x++) drawBase(ctx, b.base[y][x], x * s, y * s, s);
-    // 입구 글자
-    var e = cfg.entrance;
-    ctx.fillStyle = '#ffffff';
-    ctx.font = '400 ' + Math.round(s * 0.62) + 'px ' + getComputedStyle(document.documentElement).getPropertyValue('--display');
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText('입구', (e[0].x + 1) * s, (e[0].y + 0.55) * s);
     for (y = 0; y < ROWS; y++) for (x = 0; x < COLS; x++) {
-      if (b.obj[y][x]) drawObj(ctx, b.obj[y][x], x * s, y * s, s, b.base[y][x]);
+      var px = x * s, py = y * s;
+      if (L.isEntrance(cfg, x, y)) {
+        if (images['item:entrance']) ctx.drawImage(images['item:entrance'], px, py, s, s);
+        else { ctx.fillStyle = C.entrance; ctx.fillRect(px, py, s, s); }
+      } else if (L.isBorder(b, x, y)) {
+        drawWall(ctx, px, py, s);
+        if (b.wall[y][x] === 'braille') drawBraille(ctx, px, py, s);
+      } else {
+        drawFloor(ctx, px, py, s);
+        if (b.tactile[y][x]) drawTactile(ctx, px, py, s);
+      }
     }
-    // 놓을 자리 미리보기
-    if (state.hover && !state.run && !state.pan) {
-      ctx.strokeStyle = '#1d5fb8'; ctx.lineWidth = 2;
-      ctx.strokeRect(state.hover.x * s + 1, state.hover.y * s + 1, s - 2, s - 2);
+    // 입구 글자
+    var e = cfg.entrance, mid = (e[0].x + e[e.length - 1].x + 1) / 2;
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '400 ' + Math.round(s * 0.7) + 'px ' + getComputedStyle(document.documentElement).getPropertyValue('--display');
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('입구', mid * s, (e[0].y + 0.55) * s);
+
+    b.objects.forEach(function (o) { drawObject(ctx, o.id, o.rot, o.x * s, o.y * s, s); });
+
+    // 선택한 설비
+    if (state.selected !== -1 && b.objects[state.selected]) {
+      var so = b.objects[state.selected], sz = L.sizeOf(cfg, so);
+      ctx.strokeStyle = '#1d5fb8'; ctx.lineWidth = 3; ctx.setLineDash([6, 4]);
+      ctx.strokeRect(so.x * s - 2, so.y * s - 2, sz.w * s + 4, sz.h * s + 4);
+      ctx.setLineDash([]);
     }
+    // 놓을 자리 미리보기 (마우스)
+    if (state.hover && !state.run && !state.pan) drawGhost(s);
     if (state.run) drawRun(s);
     ctx.restore();
+  }
+
+  function drawGhost(s) {
+    var it = L.itemById(cfg, state.tool), h = state.hover;
+    if (it.layer === 'floor' && L.objectAt(state.board, cfg, h.x, h.y) === -1) {
+      var o = { id: it.id, x: 0, y: 0, rot: 0 };
+      var sz = L.sizeOf(cfg, o);
+      o.x = Math.max(1, Math.min(COLS - 1 - sz.w, h.x - Math.floor((sz.w - 1) / 2)));
+      o.y = Math.max(1, Math.min(ROWS - 1 - sz.h, h.y - Math.floor((sz.h - 1) / 2)));
+      var ok = L.fits(state.board, cfg, o, -1).ok;
+      drawObject(ctx, o.id, 0, o.x * s, o.y * s, s, ok ? 0.55 : 0.25);
+      ctx.strokeStyle = ok ? '#24855a' : '#c2453a'; ctx.lineWidth = 2;
+      ctx.strokeRect(o.x * s + 1, o.y * s + 1, sz.w * s - 2, sz.h * s - 2);
+    } else {
+      ctx.strokeStyle = '#1d5fb8'; ctx.lineWidth = 2;
+      ctx.strokeRect(h.x * s + 1, h.y * s + 1, s - 2, s - 2);
+    }
   }
 
   function visitorById(id) {
@@ -246,17 +285,16 @@
   }
 
   function drawBubble(text, px, py, s, ok) {
-    var fs = Math.max(12, Math.min(16, s * 0.5));
+    var fs = Math.max(12, Math.min(16, s * 0.6));
     ctx.font = '600 ' + fs + 'px ' + getComputedStyle(document.body).fontFamily;
-    var maxW = Math.min(s * 11, 260);
-    var lines = wrapText(text, maxW);
+    var lines = wrapText(text, Math.min(s * 12, 260));
     var w = 0;
     lines.forEach(function (l) { w = Math.max(w, ctx.measureText(l).width); });
     var pad = fs * 0.6, lh = fs * 1.3;
     var bw = w + pad * 2, bh = lines.length * lh + pad * 1.4;
     var bx = Math.max(-state.cam.ox + 4, Math.min(px - bw / 2, -state.cam.ox + wrap.clientWidth - bw - 4));
-    var by = py - bh - s * 0.9;
-    if (by < -state.cam.oy + 4) by = py + s * 0.9;
+    var by = py - bh - s;
+    if (by < -state.cam.oy + 4) by = py + s;
     ctx.fillStyle = '#ffffff';
     ctx.strokeStyle = ok ? '#24855a' : '#c2453a'; ctx.lineWidth = 2;
     roundRect(ctx, bx, by, bw, bh, fs * 0.5); ctx.fill(); ctx.stroke();
@@ -275,33 +313,29 @@
   }
 
   // ---------- 테스트 진행 ----------
-  var STEP = reduceMotion ? 0.03 : 0.13;  // 1칸 이동 시간(초)
+  var STEP = reduceMotion ? 0.02 : 0.07;  // 1칸 이동 시간(초)
   var REACT = 1.8;
 
   function startTest() {
     if (state.run) { finishRun(); return; }
+    select(-1);
     var res = L.evaluate(state.board, cfg);
     state.results = {};
     state.run = { list: res, idx: 0, t: 0 };
     renderVisitors();
     $('btn-test').textContent = '⏭ 건너뛰기';
-    setControlsDisabled(true);
+    $('btn-reset').disabled = true;
     showInfo('<span class="muted">이용객이 한 명씩 들어와요…</span>');
-  }
-
-  function setControlsDisabled(on) {
-    ['btn-sample', 'btn-reset'].forEach(function (id) { $(id).disabled = on; });
   }
 
   function stepRun(dt) {
     var run = state.run, r = run.list[run.idx];
     run.t += dt;
-    var walkTime = (r.path.length - 1) * STEP;
-    if (run.t >= walkTime + REACT) {
+    if (run.t >= (r.path.length - 1) * STEP + REACT) {
       state.results[r.id] = r;
-      renderVisitors();
       run.idx++;
       run.t = 0;
+      renderVisitors();
       if (run.idx >= run.list.length) finishRun();
     }
     state.dirty = true;
@@ -318,7 +352,7 @@
     var off = r.size / 2;
     var px = (a.x + (b2.x - a.x) * k + off) * s, py = (a.y + (b2.y - a.y) * k + off) * s;
     var arrived = run.t >= walkTime;
-    var size = s * (r.size === 2 ? 1.9 : 1.25);
+    var size = s * Math.max(1.8, r.size * 0.95);
     drawVisitor(v, px, py, size, arrived ? (r.ok ? 'happy' : 'sad') : 'normal');
     if (arrived) drawBubble(r.reason, px, py - size * 0.2, s, r.ok);
   }
@@ -328,7 +362,7 @@
     run.list.forEach(function (r) { state.results[r.id] = r; });
     state.run = null;
     $('btn-test').textContent = '▶ 테스트하기';
-    setControlsDisabled(false);
+    $('btn-reset').disabled = false;
     renderVisitors();
     showResult(run.list);
     state.dirty = true;
@@ -363,13 +397,13 @@
   function renderVisitors() {
     var box = $('visitors');
     box.innerHTML = '';
-    cfg.visitors.forEach(function (v, i) {
+    cfg.visitors.forEach(function (v) {
       var btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'vchip';
       var r = state.results[v.id];
-      var active = state.run && state.run.list[state.run.idx] && state.run.list[state.run.idx].id === v.id;
-      btn.dataset.state = active ? 'active' : r ? (r.ok ? 'ok' : 'bad') : '';
+      var cur = state.run && state.run.list[state.run.idx];
+      btn.dataset.state = cur && cur.id === v.id ? 'active' : r ? (r.ok ? 'ok' : 'bad') : '';
       btn.innerHTML = '<span class="av"></span><span class="name"></span><span class="face"></span>';
       btn.querySelector('.av').textContent = v.emoji;
       btn.querySelector('.av').style.background = v.color + '33';
@@ -412,6 +446,12 @@
       var label = document.createElement('span');
       label.textContent = it.name;
       btn.appendChild(label);
+      if (it.layer === 'floor') {
+        var size = document.createElement('span');
+        size.className = 'size';
+        size.textContent = it.w + '×' + it.h;
+        btn.appendChild(size);
+      }
       btn.addEventListener('click', function () { selectTool(it.id); });
       nav.appendChild(btn);
     });
@@ -419,31 +459,63 @@
   }
 
   function drawPalette() {
-    var nodes = document.querySelectorAll('.tool');
-    Array.prototype.forEach.call(nodes, function (btn) {
-      var id = btn.dataset.id, it = L.itemById(cfg, id);
+    Array.prototype.forEach.call(document.querySelectorAll('.tool'), function (btn) {
+      var it = L.itemById(cfg, btn.dataset.id);
       var c = btn.querySelector('canvas').getContext('2d');
       c.clearRect(0, 0, 60, 60);
-      if (it.layer === 'base') drawBase(c, id, 0, 0, 60);
-      else if (it.layer === 'wall') { drawBase(c, 'wall', 0, 0, 60); drawObj(c, id, 0, 0, 60); }
-      else if (it.layer === 'floor') { drawFloor(c, 0, 0, 60); drawObj(c, id, 0, 0, 60); }
-      else { c.fillStyle = '#ffffff'; c.fillRect(0, 0, 60, 60); drawEmoji(c, it.emoji, 30, 30, 38); }
+      if (it.layer === 'tactile') { drawTactile(c, 0, 0, 60); }
+      else if (it.layer === 'wall') { drawWall(c, 0, 0, 60); drawBraille(c, 0, 0, 60); }
+      else if (it.layer === 'floor') {
+        var s = 56 / Math.max(it.w, it.h);
+        c.fillStyle = C.floor; c.fillRect(0, 0, 60, 60);
+        drawObject(c, it.id, 0, (60 - it.w * s) / 2, (60 - it.h * s) / 2, s);
+      } else { c.fillStyle = '#ffffff'; c.fillRect(0, 0, 60, 60); drawEmoji(c, it.emoji, 30, 30, 38); }
     });
   }
 
   function selectTool(id) {
     state.tool = id;
     setPan(false);
+    select(-1);
     Array.prototype.forEach.call(document.querySelectorAll('.tool'), function (b) {
       b.setAttribute('aria-pressed', String(b.dataset.id === id));
     });
     var it = L.itemById(cfg, id);
-    showInfo('<b>' + esc(it.name) + '</b> · ' + esc(it.desc));
+    var size = it.layer === 'floor' ? ' (가로 ' + it.w + ' × 세로 ' + it.h + '칸)' : '';
+    showInfo('<b>' + esc(it.name) + '</b>' + size + ' · ' + esc(it.desc));
   }
+
+  // ---------- 선택한 설비: 돌리기, 지우기 ----------
+  function select(i) {
+    state.selected = i;
+    var bar = $('selbar');
+    if (i === -1) { bar.hidden = true; updateHint(); state.dirty = true; return; }
+    var it = L.itemById(cfg, state.board.objects[i].id);
+    $('sel-name').textContent = it.name;
+    $('btn-rotate').disabled = it.rotatable === false;
+    $('btn-rotate').title = it.rotatable === false ? '방향을 바꿀 수 없어요' : '';
+    bar.hidden = false;
+    updateHint();
+    state.dirty = true;
+  }
+  $('btn-rotate').addEventListener('click', function () {
+    if (state.selected === -1) return;
+    var r = L.rotateObject(state.board, cfg, state.selected);
+    if (r.ok) { changed(); save(); } else if (r.msg) showInfo('<span class="warn">' + esc(r.msg) + '</span>');
+  });
+  $('btn-delete').addEventListener('click', function () {
+    if (state.selected === -1) return;
+    L.removeObject(state.board, state.selected);
+    select(-1); changed(); save();
+  });
+  $('btn-deselect').addEventListener('click', function () { select(-1); });
+
+  function changed() { state.results = {}; renderVisitors(); state.dirty = true; }
 
   // ---------- 안내줄, 확인창 ----------
   function showInfo(html) { $('info').innerHTML = html; }
   function esc(t) { return String(t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function warn(msg) { if (msg) showInfo('<span class="warn">' + esc(msg) + '</span>'); }
 
   var confirmCb = null;
   function ask(text, cb) {
@@ -456,21 +528,55 @@
   $('confirm-no').addEventListener('click', function () { $('confirm').hidden = true; });
   $('result-close').addEventListener('click', function () { $('result').hidden = true; });
 
-  // ---------- 설치 ----------
+  // ---------- 보드 누르기 ----------
   var gesture = null;
-  function paint(cell) {
-    if (!cell || state.run) return;
-    var key = cell.x + ',' + cell.y;
-    if (gesture && gesture.done[key]) return;
-    if (gesture) gesture.done[key] = true;
-    var res = L.place(state.board, cfg, state.tool, cell.x, cell.y);
-    if (res.ok) {
-      state.results = {};
-      if (gesture) gesture.changed = true;
-      state.dirty = true;
-    } else if (res.msg && gesture && !gesture.warned) {
-      gesture.warned = true;
-      showInfo('<span class="warn">' + esc(res.msg) + '</span>');
+
+  // 누르기 시작: 도구에 따라 할 일이 다름
+  function pressStart(cell) {
+    if (!cell || state.run) return null;
+    var b = state.board, it = L.itemById(cfg, state.tool);
+    if (it.layer === 'tactile' || it.layer === 'tool') {
+      var g = { type: 'brush', done: {}, changed: false, warned: false };
+      brush(g, cell);
+      return g;
+    }
+    if (it.layer === 'wall') {
+      var r = L.placeWall(b, cfg, it.id, cell.x, cell.y);
+      if (r.ok) { changed(); save(); } else warn(r.msg);
+      return null;
+    }
+    // 설비 도구: 설비를 누르면 선택하고 끌어서 옮김, 빈 곳이면 새로 놓기
+    var i = L.objectAt(b, cfg, cell.x, cell.y);
+    if (i === -1) {
+      var add = L.addObject(b, cfg, it.id, cell.x, cell.y, 0);
+      if (!add.ok) { warn(add.msg); return null; }
+      i = add.index;
+      changed();
+      showInfo('<b>' + esc(it.name) + '</b>을(를) 놓았어요. 끌어서 옮기고, 위쪽 <b>⟳ 돌리기</b>로 방향을 바꿀 수 있어요.');
+    }
+    select(i);
+    var o = b.objects[i];
+    return { type: 'move', index: i, offX: cell.x - o.x, offY: cell.y - o.y, changed: true };
+  }
+
+  function brush(g, cell) {
+    if (!cell) return;
+    var k = cell.x + ',' + cell.y;
+    if (g.done[k]) return;
+    g.done[k] = true;
+    var r = state.tool === 'eraser'
+      ? L.eraseAt(state.board, cfg, cell.x, cell.y)
+      : L.paintTactile(state.board, cell.x, cell.y);
+    if (r.ok) { g.changed = true; if (state.tool === 'eraser') select(-1); changed(); }
+    else if (r.msg && !g.warned) { g.warned = true; warn(r.msg); }
+  }
+
+  function pressMove(g, cell) {
+    if (!cell) return;
+    if (g.type === 'brush') brush(g, cell);
+    if (g.type === 'move') {
+      var r = L.moveObject(state.board, cfg, g.index, cell.x - g.offX, cell.y - g.offY);
+      if (r.ok) { changed(); }
     }
   }
 
@@ -487,16 +593,11 @@
     pointers[e.pointerId] = local(e);
     var list = pointerList();
     if (list.length === 1) {
-      if (state.pan || e.button === 1 || e.button === 2) {
-        gesture = { type: 'pan', last: list[0] };
-      } else {
-        gesture = { type: 'paint', done: {}, changed: false, warned: false };
-        paint(toCell(list[0].x, list[0].y));
-      }
+      if (state.pan || e.button === 1 || e.button === 2) gesture = { type: 'pan', last: list[0] };
+      else gesture = pressStart(toCell(list[0].x, list[0].y));
     } else if (list.length === 2) {
-      // 두 손가락: 확대·이동
       var a = list[0], b = list[1];
-      gesture = { type: 'pinch', d: Math.hypot(a.x - b.x, a.y - b.y), mid: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }, wasPaint: gesture && gesture.changed };
+      gesture = { type: 'pinch', d: Math.hypot(a.x - b.x, a.y - b.y), mid: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }, wasChanged: gesture && gesture.changed };
     }
   });
   canvas.addEventListener('pointermove', function (e) {
@@ -509,8 +610,8 @@
     pointers[e.pointerId] = p;
     if (!gesture) return;
     var list = pointerList();
-    if (gesture.type === 'paint' && list.length === 1) {
-      paint(toCell(p.x, p.y));
+    if ((gesture.type === 'brush' || gesture.type === 'move') && list.length === 1) {
+      pressMove(gesture, toCell(p.x, p.y));
     } else if (gesture.type === 'pan' && list.length === 1) {
       state.cam.ox += p.x - gesture.last.x; state.cam.oy += p.y - gesture.last.y;
       gesture.last = p; clampCam(); state.dirty = true;
@@ -526,7 +627,7 @@
   function endPointer(e) {
     delete pointers[e.pointerId];
     if (Object.keys(pointers).length === 0) {
-      if (gesture && (gesture.changed || gesture.wasPaint)) save();
+      if (gesture && (gesture.changed || gesture.wasChanged)) save();
       gesture = null;
     }
   }
@@ -559,20 +660,13 @@
 
   // ---------- 버튼 ----------
   $('btn-test').addEventListener('click', startTest);
-  $('btn-sample').addEventListener('click', function () {
-    ask('지금 꾸민 화장실을 지우고 예시를 불러올까요?', function () {
-      state.board = L.sampleBoard(cfg); state.results = {}; save(); renderVisitors(); state.dirty = true;
-      showInfo('<b>예시</b> · 왼쪽 위가 누구나 이용할 수 있는 칸이에요. 물건을 지워 보고 테스트해 보세요.');
-    });
-  });
   $('btn-reset').addEventListener('click', function () {
     ask('보드를 비우고 처음부터 꾸밀까요?', function () {
-      state.board = L.createBoard(cfg); state.results = {}; save(); renderVisitors(); state.dirty = true;
-      showInfo('빈 공간이에요. <b>벽</b>과 <b>문</b>으로 칸을 만들고, 설비를 놓아 보세요.');
+      state.board = L.createBoard(cfg); select(-1); changed(); save();
+      showInfo('빈 화장실이에요. 설비를 골라 보드를 눌러 놓아 보세요.');
     });
   });
-  var hintHidden = false;
-  $('btn-hide-hint').addEventListener('click', function () { hintHidden = true; $('rotate-hint').hidden = true; });
+  $('btn-hide-hint').addEventListener('click', function () { hintHidden = true; updateHint(); });
 
   // ---------- 루프 ----------
   var last = 0;
@@ -592,6 +686,6 @@
   renderVisitors();
   resize();
   canvas.style.cursor = 'crosshair';
-  showInfo('<b>벽</b>, <b>문</b>, 설비를 골라 보드를 눌러 설치하고 <b>▶ 테스트하기</b>를 눌러 보세요. 위쪽 이용객을 누르면 필요한 것이 보여요.');
+  showInfo('빈 화장실이에요. 이용객은 오른쪽 아래 <b>입구</b>로 들어와요. 설비를 골라 보드를 눌러 놓고 <b>▶ 테스트하기</b>를 눌러 보세요.');
   requestAnimationFrame(loop);
 })();

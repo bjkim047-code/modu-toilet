@@ -134,7 +134,7 @@ body {
 }
 #board { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; display: block; }
 .zoom {
-  position: absolute; right: 8px; bottom: 8px;
+  position: absolute; left: 8px; bottom: 8px;
   display: flex; gap: 4px;
 }
 .zbtn {
@@ -149,6 +149,17 @@ body {
   padding: 8px 10px; font-size: 13px; display: flex; justify-content: space-between; gap: 8px;
 }
 .link { border: 0; background: none; color: var(--accent); font: 600 13px var(--body); cursor: pointer; padding: 0; }
+
+.selbar {
+  position: absolute; left: 50%; top: 8px; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 6px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+  padding: 6px 6px 6px 12px; box-shadow: 0 4px 14px rgba(10, 16, 24, 0.18);
+  max-width: calc(100% - 16px); box-sizing: border-box;
+}
+.sel-name { font-weight: 800; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.btn.small { padding: 6px 10px; font-size: 13px; white-space: nowrap; }
+.tool .size { font-size: 11px; font-weight: 600; color: var(--muted); margin-left: auto; padding-left: 4px; }
 
 /* 안내줄 */
 .info {
@@ -193,6 +204,7 @@ body {
   .palette { flex-direction: row; overflow-x: auto; overflow-y: hidden; padding-bottom: 4px; }
   .pgroup { display: none; }
   .tool { flex-direction: column; gap: 2px; padding: 4px; min-width: 64px; font-size: 11px; text-align: center; }
+  .tool .size { margin-left: 0; padding-left: 0; }
 }
 
 /* 낮은 화면(휴대폰 가로): 머리줄을 줄이고 이름은 숨김 */
