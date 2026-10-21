@@ -3,7 +3,7 @@ var assert = require('assert');
 var cfg = require('../js/config.js');
 var L = require('../js/logic.js');
 
-// 5명 모두 성공하는 배치 (입구는 오른쪽 아래 x=24~27)
+// 5명 모두 성공하는 배치 (입구는 오른쪽 아래 x=14~17, y=14)
 function goodBoard() {
   var b = L.createBoard(cfg);
   function add(id, cx, cy, rot) { var r = L.addObject(b, cfg, id, cx, cy, rot); assert.ok(r.ok, id + ' ' + r.msg); return r.index; }
@@ -11,13 +11,13 @@ function goodBoard() {
   add('grabBar', 1, 4);         // 변기 아래 가로 손잡이 x1~3, y4
   add('sinkLow', 6, 1);         // x5~7, y1~2
   add('sink', 10, 1);           // x9~11, y1~2
-  add('diaper', 2, 16);         // x1~4, y15~17
-  add('babySeat', 7, 17);       // x7~8, y16~18
+  add('diaper', 2, 12);         // x1~4, y11~13
+  add('babySeat', 7, 12);       // x7~8, y11~13
   add('ostomy', 14, 2);         // x14~15, y1~2
-  L.placeWall(b, cfg, 'braille', 23, 19);
-  // 점자블록: 입구(25,19) 위로 → 왼쪽 → 손잡이를 돌아 변기 오른쪽 (3,2)까지
-  for (var y = 6; y <= 18; y++) L.paintTactile(b, 25, y);
-  for (var x = 4; x <= 25; x++) L.paintTactile(b, x, 6);
+  L.placeWall(b, cfg, 'braille', 13, 14);
+  // 점자블록: 입구(15,14) 위로 → 왼쪽 → 손잡이를 돌아 변기 오른쪽 (3,2)까지
+  for (var y = 6; y <= 13; y++) L.paintTactile(b, 15, y);
+  for (var x = 4; x <= 15; x++) L.paintTactile(b, x, 6);
   for (y = 2; y <= 6; y++) L.paintTactile(b, 4, y);
   L.paintTactile(b, 3, 2);
   return b;
@@ -70,12 +70,12 @@ var tests = {
     assert.strictEqual(r.wheelchair.ok, false);
   },
   '6×6 공간이 없으면 휠체어 실패': function () {
-    // 4칸 폭 통로(아래쪽 가로 y15~18, 왼쪽 세로 x3~6)만 남기고 모두 채움
+    // 5칸 폭 통로(아래쪽 가로 y9~13, 왼쪽 세로 x3~6)만 남기고 모두 채움
     var b = L.createBoard(cfg);
     L.addObject(b, cfg, 'toilet', 1, 1);       // x1~2, y1~3
     L.addObject(b, cfg, 'grabBar', 1, 5, 1);   // 세로 손잡이 x1, y4~6
     L.addObject(b, cfg, 'sinkLow', 8, 1);      // x7~9, y1~2
-    for (var y = 1; y <= 13; y += 2) for (var x = 1; x <= 27; x += 2) {
+    for (var y = 1; y <= 7; y += 2) for (var x = 1; x <= 17; x += 2) {
       if (x + 1 >= 3 && x <= 6) continue;
       L.addObject(b, cfg, 'ostomy', x, y);
     }
@@ -85,13 +85,13 @@ var tests = {
   },
   '점자블록이 끊기면 시각장애인 실패': function () {
     var b = goodBoard();
-    L.eraseAt(b, cfg, 25, 12);
+    L.eraseAt(b, cfg, 15, 10);
     assert.match(results(b).blind.reason, /점자블록/);
   },
   '점자 안내판이 입구에서 멀면 시각장애인 실패': function () {
     var b = goodBoard();
-    L.eraseAt(b, cfg, 23, 19);
-    L.placeWall(b, cfg, 'braille', 5, 19);
+    L.eraseAt(b, cfg, 13, 14);
+    L.placeWall(b, cfg, 'braille', 5, 14);
     assert.match(results(b).blind.reason, /점자 안내판/);
   },
   '오스토미 세척대를 지우면 장루·요루 이용자 실패': function () {
@@ -106,10 +106,10 @@ var tests = {
     assert.deepStrictEqual(L.sizeOf(cfg, b.objects[0]), { w: 2, h: 3 });
     assert.strictEqual(L.rotateObject(b, cfg, 0).ok, false, '변기는 회전 불가');
     assert.strictEqual(L.addObject(b, cfg, 'sink', 5, 5).ok, false, '겹치면 안 됨');
-    var s = L.addObject(b, cfg, 'diaper', 15, 10);
+    var s = L.addObject(b, cfg, 'diaper', 12, 8);
     assert.ok(L.rotateObject(b, cfg, s.index).ok);
     assert.deepStrictEqual(L.sizeOf(cfg, b.objects[s.index]), { w: 3, h: 4 });
-    assert.ok(L.moveObject(b, cfg, s.index, 20, 3).ok);
+    assert.ok(L.moveObject(b, cfg, s.index, 14, 2).ok);
     // 가장자리 클릭도 안쪽으로 밀어 넣음
     var g = L.addObject(b, cfg, 'grabBar', 0, 0);
     assert.ok(g.ok);
@@ -125,8 +125,8 @@ var tests = {
     assert.strictEqual(b.tactile[5][5], false);
     // 점자 안내판은 바깥 벽(입구 제외)에만
     assert.strictEqual(L.placeWall(b, cfg, 'braille', 5, 5).ok, false);
-    assert.strictEqual(L.placeWall(b, cfg, 'braille', 25, 19).ok, false);
-    assert.ok(L.placeWall(b, cfg, 'braille', 23, 19).ok);
+    assert.strictEqual(L.placeWall(b, cfg, 'braille', 15, 14).ok, false);
+    assert.ok(L.placeWall(b, cfg, 'braille', 13, 14).ok);
   }
 };
 
