@@ -184,6 +184,32 @@ tests['휴지걸이: 벽 가운데 단 층, 바닥 설비와 겹침 가능'] = f
   assert.strictEqual(L.objectAt(b, cfg, 5, 1), 0);
 };
 
+tests['수건걸이: 벽을 따라 2칸, 휴지걸이와 같은 층'] = function () {
+  var b = L.createBoard(cfg);
+  var t = L.addObject(b, cfg, 'towelBar', 6, 0);         // 위쪽 벽 면을 누름 → x6~7, y1
+  assert.ok(t.ok, t.msg);
+  var o = b.objects[t.index];
+  assert.deepStrictEqual([o.x, o.y, o.rot], [6, 1, 0]);
+  assert.deepStrictEqual(L.sizeOf(cfg, o), { w: 2, h: 1 });
+  // 같은 층(휴지걸이)과는 겹칠 수 없고, 바닥 설비와는 겹칠 수 있음
+  assert.strictEqual(L.addObject(b, cfg, 'paperHolder', 7, 1).ok, false);
+  assert.ok(L.addObject(b, cfg, 'paperHolder', 8, 1).ok);
+  assert.ok(L.addObject(b, cfg, 'toilet', 7, 2).ok);
+  // 왼쪽 벽에서는 세로로 2칸
+  var l = L.addObject(b, cfg, 'towelBar', 0, 9);
+  assert.ok(l.ok);
+  assert.deepStrictEqual(L.sizeOf(cfg, b.objects[l.index]), { w: 1, h: 2 });
+  // 오른쪽 끝에서는 안쪽으로 밀어 넣음
+  var e = L.addObject(b, cfg, 'towelBar', 18, 1);
+  assert.ok(e.ok);
+  assert.strictEqual(b.objects[e.index].x, 17);
+  // 모서리에서 돌리기
+  var c = L.addObject(b, cfg, 'towelBar', 1, 1);
+  assert.ok(c.ok, c.msg);
+  assert.ok(L.rotateObject(b, cfg, c.index).ok);
+  assert.deepStrictEqual([b.objects[c.index].x, b.objects[c.index].y, b.objects[c.index].rot], [1, 1, 3]);
+};
+
 var failed = 0;
 Object.keys(tests).forEach(function (name) {
   try { tests[name](); console.log('✓ ' + name); }

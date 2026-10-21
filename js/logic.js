@@ -107,7 +107,7 @@ var ModuLogic = (function () {
   function placement(b, cfg, id, cx, cy, rot) {
     var it = itemById(cfg, id);
     var o = { id: id, x: 0, y: 0, rot: it.rotatable === false ? 0 : (rot || 0) };
-    if (it.level === 'mid') { snapToWall(o, cx, cy); return o; }
+    if (it.level === 'mid') { snapToWall(o, cx, cy); clampIn(b, cfg, o); return o; }
     var s = sizeOf(cfg, o);
     o.x = cx - Math.floor((s.w - 1) / 2);
     o.y = cy - Math.floor((s.h - 1) / 2);
@@ -128,8 +128,8 @@ var ModuLogic = (function () {
   function moveObject(b, cfg, i, x, y) {
     var o = b.objects[i];
     var n = { id: o.id, x: x, y: y, rot: o.rot };
-    if (levelOf(cfg, o) === 'mid') { if (!snapToWall(n, x, y)) return { ok: false }; }
-    else clampIn(b, cfg, n);
+    if (levelOf(cfg, o) === 'mid' && !snapToWall(n, x, y)) return { ok: false };
+    clampIn(b, cfg, n);
     if (n.x === o.x && n.y === o.y && n.rot === o.rot) return { ok: false };
     if (n.x === o.x && n.y === o.y) return { ok: false };
     var f = fits(b, cfg, n, i);

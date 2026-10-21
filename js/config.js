@@ -53,6 +53,9 @@ var MODU_CONFIG = {
     // level: 'mid' = 뒤쪽 벽 바로 옆 칸, 벽 가운데 단 높이에 붙음. 바닥 설비와 같은 칸에 겹쳐 놓을 수 있음
     { id: 'paperHolder', name: '휴지걸이', layer: 'floor', level: 'mid', group: '벽에 붙이기', w: 1, h: 1, rotations: [0, 3], emoji: '🧻', color: '#ffffff',
       desc: '뒤쪽 벽 바로 옆 칸에 붙여요. 벽 가운데 높이라 변기 같은 설비와 같은 칸에 겹쳐 놓을 수 있어요.' },
+    // along: 벽을 따라 길게 붙는 물건 (그림 가운데를 벽 선에 맞춤). isoW: 마름모 보기에서 그림 너비 (칸 너비 기준)
+    { id: 'towelBar', name: '수건걸이', layer: 'floor', level: 'mid', group: '벽에 붙이기', w: 2, h: 1, rotations: [0, 3], along: true, isoW: 1.15, emoji: '🧺', color: '#ffffff',
+      desc: '뒤쪽 벽을 따라 2칸에 걸쳐 붙여요. 휴지걸이와 같은 벽 가운데 높이라 휴지걸이와는 겹칠 수 없어요.' },
 
     { id: 'eraser', name: '지우개', layer: 'tool', group: '도구', emoji: '🧽',
       desc: '설비, 안내판, 점자블록을 지워요. 끌면 여러 개를 지울 수 있어요.' }

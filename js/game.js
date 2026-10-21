@@ -426,18 +426,23 @@
 
   // 벽 가운데 단에 붙은 물건: 벽 면과 칸이 만나는 선에서 벽 높이의 절반만큼 올려 그림
   function drawIsoWallMounted(o, s, alpha) {
-    var it = L.itemById(cfg, o.id);
+    var it = L.itemById(cfg, o.id), sz = L.sizeOf(cfg, o);
     var wallSide = o.rot === 3 ? 'left' : 'top';
-    var p = wallSide === 'top' ? P(o.x + 0.5, o.y, s) : P(o.x, o.y + 0.5, s);
+    var p = wallSide === 'top' ? P(o.x + sz.w / 2, o.y, s) : P(o.x, o.y + sz.h / 2, s);
     p.y -= WALL_H * s * 0.5;
     var img = images['iso:' + o.id + ':' + (o.rot % 2 ? 'b' : 'a')];
     ctx.save();
     if (alpha !== undefined) ctx.globalAlpha = alpha;
     if (img) {
-      var iw = s * 0.85, ih = iw * img.height / img.width;
-      // 벽에 닿는 쪽(그림의 받침)이 벽 선에 오도록: 위쪽 벽이면 그림 오른쪽, 왼쪽 벽이면 그림 왼쪽
-      var x0 = wallSide === 'top' ? p.x - iw * 0.8 : p.x - iw * 0.2;
-      ctx.drawImage(img, x0, p.y - ih * 0.3, iw, ih);
+      var iw = s * (it.isoW || 0.85), ih = iw * img.height / img.width;
+      if (it.along) {
+        // 벽을 따라 붙는 물건: 그림 가운데를 벽 선 가운데에
+        ctx.drawImage(img, p.x - iw / 2, p.y - ih / 2, iw, ih);
+      } else {
+        // 벽에 닿는 쪽(그림의 받침)이 벽 선에 오도록: 위쪽 벽이면 그림 오른쪽, 왼쪽 벽이면 그림 왼쪽
+        var x0 = wallSide === 'top' ? p.x - iw * 0.8 : p.x - iw * 0.2;
+        ctx.drawImage(img, x0, p.y - ih * 0.3, iw, ih);
+      }
     } else {
       ctx.fillStyle = '#ffffff'; roundRect(ctx, p.x - s * 0.3, p.y - s * 0.3, s * 0.6, s * 0.6, s * 0.1); ctx.fill();
       drawEmoji(ctx, it.emoji, p.x, p.y, s * 0.42);
@@ -516,10 +521,12 @@
       var d = depthOf(o);
       if (L.levelOf(cfg, o) === 'mid') {
         // 벽에 붙은 물건은 벽 바로 앞 깊이. 같은 칸에 바닥 설비가 있으면 그보다 앞에 그려서 보이게 함
-        d = o.x + o.y + 0.05;
+        d = depthOf(o) - 0.95;
+        var cells = L.cellsOf(cfg, o);
         b.objects.forEach(function (f) {
           if (L.levelOf(cfg, f) !== 'floor') return;
-          if (L.cellsOf(cfg, f).some(function (c) { return c.x === o.x && c.y === o.y; })) d = Math.max(d, depthOf(f) + 0.01);
+          var hit = L.cellsOf(cfg, f).some(function (c) { return cells.some(function (m) { return m.x === c.x && m.y === c.y; }); });
+          if (hit) d = Math.max(d, depthOf(f) + 0.01);
         });
       }
       items.push({ d: d, draw: drawIsoObject.bind(null, o, s, undefined) });
