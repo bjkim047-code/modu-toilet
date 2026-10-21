@@ -62,8 +62,10 @@ var tests = {
   },
   '길이 좁으면 휠체어 실패, 다른 사람은 통과': function () {
     var b = goodBoard();
-    // 변기 오른쪽(x4~5) 통로를 2칸 폭으로 좁힘: 오스토미 세척대를 x6~7, y3~4로 옮김
+    // 변기 오른쪽(x4~5) 통로를 2칸 폭으로 좁힘: 오스토미 세척대 두 개를 x6~7, y1~4에 둠
+    // (낮은 세면대는 벽걸이라 바닥을 막지 않으므로 통로를 좁히지 않음)
     b.objects = b.objects.filter(function (o) { return o.id !== 'ostomy'; });
+    assert.ok(L.addObject(b, cfg, 'ostomy', 6, 1).ok);
     assert.ok(L.addObject(b, cfg, 'ostomy', 6, 3).ok);
     var r = results(b);
     assert.strictEqual(r.wheelchair.ok, false);
@@ -259,6 +261,24 @@ tests['벽걸이 세면대: 가운데 단, 바닥을 막지 않음'] = function 
   L.addObject(t, cfg, 'toilet', 3, 2);
   L.addObject(t, cfg, 'sink', 12, 1);
   var r = L.evaluate(t, cfg).filter(function (x) { return x.id === 'trans'; })[0];
+  assert.strictEqual(r.ok, true, r.reason);
+};
+
+tests['낮은 세면대: 벽걸이 아래 단, 가운데 단 세면대와 겹침 가능'] = function () {
+  var b = L.createBoard(cfg);
+  var lo = L.addObject(b, cfg, 'sinkLow', 10, 0);
+  assert.ok(lo.ok, lo.msg);
+  assert.deepStrictEqual([b.objects[lo.index].x, b.objects[lo.index].y, L.bandOf(cfg, b.objects[lo.index])], [9, 1, 1]);
+  // 일반 세면대(가운데 단)는 같은 자리에 겹쳐 걸 수 있고, 아래 단 비상벨은 안 됨
+  assert.ok(L.addObject(b, cfg, 'sink', 10, 1).ok);
+  assert.strictEqual(L.addObject(b, cfg, 'bell', 10, 1, 0, 1).ok, false);
+  assert.strictEqual(L.addObject(b, cfg, 'sinkLow', 10, 7).ok, false, '벽에서 먼 칸은 안 됨');
+  // 휠체어가 낮은 세면대 아래로 다가가 손을 씻을 수 있음
+  var t = L.createBoard(cfg);
+  L.addObject(t, cfg, 'toilet', 3, 2);
+  L.addObject(t, cfg, 'grabBar', 5, 2);
+  L.addObject(t, cfg, 'sinkLow', 12, 1);
+  var r = L.evaluate(t, cfg).filter(function (x) { return x.id === 'wheelchair'; })[0];
   assert.strictEqual(r.ok, true, r.reason);
 };
 
