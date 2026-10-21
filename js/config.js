@@ -34,7 +34,7 @@ var MODU_CONFIG = {
     { id: 'toilet', name: '변기', layer: 'floor', group: '설비', w: 2, h: 3, rotations: [0, 3], emoji: '🚽', color: '#ffffff',
       desc: '꼭 필요해요. 오른쪽 위 벽이나 왼쪽 위 벽에 붙여 놓을 수 있어요.' },
     // anchor: 'center' = 그림 가운데를 차지한 칸들의 가운데 위에 둠 (벽에서 앞으로 튀어나온 큰 벽걸이 물건)
-    // 실제 약 35 × 50cm. 그림이 오기 전까지 임시 그림
+    // 실제 약 35 × 50cm
     { id: 'childToilet', name: '아동용 변기', layer: 'floor', group: '설비', w: 2, h: 2, rotations: [0, 3], emoji: '🚽', color: '#fff3c4',
       desc: '아이 몸에 맞는 작은 변기예요. 보호자와 함께 온 아이가 혼자 앉을 수 있어요.' },
     { id: 'sink', name: '세면대', layer: 'floor', mount: true, bands: [2], group: '설비', w: 3, h: 2, rotations: [0, 3], anchor: 'center', isoW: 2.3, emoji: '🚰', color: '#ffffff',
