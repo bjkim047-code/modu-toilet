@@ -147,7 +147,7 @@ var ModuLogic = (function () {
     if (!inside(b, x, y) || !isBorder(b, x, y) || isEntrance(cfg, x, y)) {
       return { ok: false, msg: it.name + '은(는) 바깥 벽에 붙여 주세요.' };
     }
-    if (b.wall[y][x] === id) return { ok: false };
+    if (b.wall[y][x] === id) return { ok: false };  // 다른 물건이 있으면 바꿔 붙임
     b.wall[y][x] = id;
     return { ok: true };
   }

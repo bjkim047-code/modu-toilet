@@ -3,7 +3,8 @@
   var cfg = MODU_CONFIG;
   var L = ModuLogic;
   var COLS = cfg.cols, ROWS = cfg.rows;
-  var SAVE_KEY = 'modu-toilet-board-v2';
+  var SAVE_KEY = 'modu-toilet-board-v3';
+  var OLD_SAVE_KEY = 'modu-toilet-board-v2';  // 손잡이 기본 방향이 가로였던 때
   var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   var $ = function (id) { return document.getElementById(id); };
@@ -30,7 +31,7 @@
     img.src = src;
   }
   cfg.items.forEach(function (it) { tryImage('item:' + it.id, 'assets/items/' + it.id + '.png'); });
-  ['floor', 'wall', 'entrance'].forEach(function (id) { tryImage('item:' + id, 'assets/items/' + id + '.png'); });
+  ['floor', 'wall', 'entrance', 'tactile'].forEach(function (id) { tryImage('item:' + id, 'assets/items/' + id + '.png'); });
   cfg.visitors.forEach(function (v) {
     ['normal', 'happy', 'sad'].forEach(function (f) { tryImage('visitor:' + v.id + ':' + f, 'assets/visitors/' + v.id + '_' + f + '.png'); });
   });
@@ -41,9 +42,12 @@
   }
   function load() {
     try {
-      var d = JSON.parse(localStorage.getItem(SAVE_KEY));
+      var d = JSON.parse(localStorage.getItem(SAVE_KEY)), old = false;
+      if (!d) { d = JSON.parse(localStorage.getItem(OLD_SAVE_KEY)); old = true; }
       if (!d || d.cols !== COLS || d.rows !== ROWS || !Array.isArray(d.objects)) return null;
       d.objects = d.objects.filter(function (o) { return L.itemById(cfg, o.id); });
+      // 예전 저장본의 손잡이는 한 번 돌려야 같은 자리를 차지함
+      if (old) d.objects.forEach(function (o) { if (o.id === 'grabBar') o.rot = (o.rot + 1) % 4; });
       return d;
     } catch (e) { return null; }
   }
@@ -87,9 +91,17 @@
     }
   }
 
-  function drawBraille(c, x, y, s) {
-    var img = images['item:braille'];
+  // 바깥 벽에 붙이는 물건 (점자 안내판, 비상벨)
+  function drawWallItem(c, id, x, y, s) {
+    var img = images['item:' + id];
     if (img) { c.drawImage(img, x, y, s, s); return; }
+    if (id === 'braille') return drawBraille(c, x, y, s);
+    var it = L.itemById(cfg, id);
+    c.fillStyle = '#ffffff'; roundRect(c, x + s * 0.14, y + s * 0.14, s * 0.72, s * 0.72, s * 0.1); c.fill();
+    drawEmoji(c, it.emoji, x + s / 2, y + s / 2, s * 0.5);
+  }
+
+  function drawBraille(c, x, y, s) {
     c.fillStyle = '#ffffff'; roundRect(c, x + s * 0.14, y + s * 0.14, s * 0.72, s * 0.72, s * 0.1); c.fill();
     c.fillStyle = '#1d5fb8';
     [[0, 0], [0, 1], [1, 1], [0, 2], [1, 0]].forEach(function (p) {
@@ -203,6 +215,7 @@
   function draw() {
     var cam = state.cam, s = cam.scale, b = state.board;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.imageSmoothingQuality = 'high';
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.save();
     ctx.translate(cam.ox, cam.oy);
@@ -214,7 +227,7 @@
         else { ctx.fillStyle = C.entrance; ctx.fillRect(px, py, s, s); }
       } else if (L.isBorder(b, x, y)) {
         drawWall(ctx, px, py, s);
-        if (b.wall[y][x] === 'braille') drawBraille(ctx, px, py, s);
+        if (b.wall[y][x]) drawWallItem(ctx, b.wall[y][x], px, py, s);
       } else {
         drawFloor(ctx, px, py, s);
         if (b.tactile[y][x]) drawTactile(ctx, px, py, s);
@@ -464,7 +477,7 @@
       var c = btn.querySelector('canvas').getContext('2d');
       c.clearRect(0, 0, 60, 60);
       if (it.layer === 'tactile') { drawTactile(c, 0, 0, 60); }
-      else if (it.layer === 'wall') { drawWall(c, 0, 0, 60); drawBraille(c, 0, 0, 60); }
+      else if (it.layer === 'wall') { drawWall(c, 0, 0, 60); drawWallItem(c, it.id, 0, 0, 60); }
       else if (it.layer === 'floor') {
         var s = 56 / Math.max(it.w, it.h);
         c.fillStyle = C.floor; c.fillRect(0, 0, 60, 60);

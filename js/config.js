@@ -6,9 +6,9 @@
 //
 // 그림 교체 방법:
 //   assets/items/<물건 id>.png       예) assets/items/toilet.png
-//     크기는 기본 방향 기준 (가로 w칸 × 세로 h칸) × 64px. 예) 변기 128×192px
+//     크기는 기본 방향 기준 (가로 w칸 × 세로 h칸) × 128px. 예) 변기 256×384px (64px 단위도 됨)
 //     방향을 돌리면 그림도 함께 돌아갑니다. 기본 방향은 벽이 위쪽에 있는 모습입니다.
-//   assets/items/floor.png, wall.png, entrance.png, tactile.png  (1칸 64×64px)
+//   assets/items/floor.png, wall.png, entrance.png, tactile.png, braille.png, bell.png  (1칸, 정사각형)
 //   assets/visitors/<이용객 id>_normal.png, _happy.png, _sad.png
 //   파일이 있으면 그림을 쓰고, 없으면 임시 그림(이모지)을 씁니다.
 
@@ -39,11 +39,15 @@ var MODU_CONFIG = {
       desc: '보호자가 볼일을 보는 동안 아이가 앉아 기다리는 의자예요.' },
     { id: 'ostomy', name: '오스토미 세척대', layer: 'floor', group: '설비', w: 2, h: 2, emoji: '🚿', color: '#dfe9fb',
       desc: '장루·요루 주머니를 비우고 씻는 설비예요.' },
-    { id: 'grabBar', name: '손잡이', layer: 'floor', group: '설비', w: 3, h: 1, emoji: '', color: '#f08a24',
+    { id: 'grabBar', name: '손잡이', layer: 'floor', group: '설비', w: 1, h: 3, emoji: '', color: '#f08a24',
       desc: '변기 바로 옆에 붙여 주세요. 몸을 옮기거나 일어설 때 잡아요.' },
+    { id: 'paperHolder', name: '휴지걸이', layer: 'floor', group: '설비', w: 2, h: 2, emoji: '🧻', color: '#ffffff',
+      desc: '손잡이가 달린 휴지걸이예요. 변기에 앉은 채로 손이 닿는 곳에 두세요.' },
 
     { id: 'braille', name: '점자 안내판', layer: 'wall', group: '벽에 붙이기',
       desc: '입구 옆 바깥 벽에 붙여 주세요. 손으로 읽는 안내판이에요.' },
+    { id: 'bell', name: '비상벨', layer: 'wall', group: '벽에 붙이기', emoji: '🚨',
+      desc: '위급할 때 누르는 벨이에요. 바깥 벽에 붙여 주세요.' },
 
     { id: 'eraser', name: '지우개', layer: 'tool', group: '도구', emoji: '🧽',
       desc: '설비, 안내판, 점자블록을 지워요. 끌면 여러 개를 지울 수 있어요.' }

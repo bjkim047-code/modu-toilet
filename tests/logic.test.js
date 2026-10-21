@@ -8,7 +8,7 @@ function goodBoard() {
   var b = L.createBoard(cfg);
   function add(id, cx, cy, rot) { var r = L.addObject(b, cfg, id, cx, cy, rot); assert.ok(r.ok, id + ' ' + r.msg); return r.index; }
   add('toilet', 2, 2);          // x1~2, y1~3
-  add('grabBar', 1, 4);         // 변기 아래 가로 손잡이 x1~3, y4
+  add('grabBar', 1, 4, 1);      // 변기 아래 가로로 돌린 손잡이 x1~3, y4
   add('sinkLow', 6, 1);         // x5~7, y1~2
   add('sink', 10, 1);           // x9~11, y1~2
   add('diaper', 2, 12);         // x1~4, y11~13
@@ -73,7 +73,7 @@ var tests = {
     // 5칸 폭 통로(아래쪽 가로 y9~13, 왼쪽 세로 x3~6)만 남기고 모두 채움
     var b = L.createBoard(cfg);
     L.addObject(b, cfg, 'toilet', 1, 1);       // x1~2, y1~3
-    L.addObject(b, cfg, 'grabBar', 1, 5, 1);   // 세로 손잡이 x1, y4~6
+    L.addObject(b, cfg, 'grabBar', 1, 5);      // 세로 손잡이 x1, y4~6
     L.addObject(b, cfg, 'sinkLow', 8, 1);      // x7~9, y1~2
     for (var y = 1; y <= 7; y += 2) for (var x = 1; x <= 17; x += 2) {
       if (x + 1 >= 3 && x <= 6) continue;
@@ -127,6 +127,14 @@ var tests = {
     assert.strictEqual(L.placeWall(b, cfg, 'braille', 5, 5).ok, false);
     assert.strictEqual(L.placeWall(b, cfg, 'braille', 15, 14).ok, false);
     assert.ok(L.placeWall(b, cfg, 'braille', 13, 14).ok);
+    // 비상벨도 바깥 벽에만, 같은 칸에 붙이면 바꿔 붙임
+    assert.strictEqual(L.placeWall(b, cfg, 'bell', 5, 5).ok, false);
+    assert.ok(L.placeWall(b, cfg, 'bell', 13, 14).ok);
+    assert.strictEqual(b.wall[14][13], 'bell');
+    // 휴지걸이는 2×2 설비
+    var p = L.addObject(b, cfg, 'paperHolder', 10, 10);
+    assert.ok(p.ok);
+    assert.deepStrictEqual(L.sizeOf(cfg, b.objects[p.index]), { w: 2, h: 2 });
   }
 };
 
