@@ -168,7 +168,8 @@
   // ---------- 보기 방식: 'iso'(마름모) 또는 'flat'(네모) ----------
   var VIEW_KEY = 'modu-toilet-view';
   var WALL_H = 1.7;  // 마름모 보기에서 뒤쪽 벽 높이 (칸 너비 기준)
-  var WALL_C = { face: '#b4705a', side: '#97584a', top: '#d8c7b6', line: '#e6d9cc' };
+  // 벽 색: 블루블랙. 뒤쪽 높은 벽(back)과 앞쪽 낮은 벽(front)
+  var WALL_C = { back: '#5a6273', front: '#4a5160', line: 'rgba(160,172,196,0.45)', rows: 3 };
   state.view = 'iso';
   try { if (localStorage.getItem(VIEW_KEY) === 'flat') state.view = 'flat'; } catch (e) {}
 
@@ -387,11 +388,17 @@
   }
 
   // 벽 칸: 뒤쪽(위·왼쪽 테두리)은 높게, 앞쪽은 낮게
-  // 벽 면: 바닥 모서리 a→b 위로 높이 z만큼 세운 면. 칸마다 테두리로 구분
-  function wallFace(a, b, z, color, s) {
+  // 벽 면: 바닥 모서리 a→b 위로 높이 z만큼 세운 면. 칸마다 테두리, rows단으로 가로줄
+  function wallFace(a, b, z, color, s, rows) {
     ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.lineTo(b.x, b.y - z); ctx.lineTo(a.x, a.y - z); ctx.closePath();
     ctx.fillStyle = color; ctx.fill();
-    ctx.strokeStyle = WALL_C.line; ctx.lineWidth = Math.max(1, s * 0.035); ctx.stroke();
+    ctx.strokeStyle = WALL_C.line; ctx.lineWidth = Math.max(1, s * 0.03); ctx.stroke();
+    ctx.beginPath();
+    for (var r = 1; r < rows; r++) {
+      var h = z * r / rows;
+      ctx.moveTo(a.x, a.y - h); ctx.lineTo(b.x, b.y - h);
+    }
+    ctx.stroke();
   }
 
   function drawIsoWall(x, y, s) {
@@ -399,9 +406,10 @@
     var z = (back ? WALL_H : 0.3) * s;
     var c = corners(x, y, 1, 1, s);
     // 보이는 두 면(왼쪽 앞, 오른쪽 앞)과 윗면
-    wallFace(c[3], c[2], z, WALL_C.face, s);
-    wallFace(c[2], c[1], z, WALL_C.side, s);
-    polygon(c, z); ctx.fillStyle = WALL_C.top; ctx.fill();
+    var base = back ? WALL_C.back : WALL_C.front, rows = back ? WALL_C.rows : 1;
+    wallFace(c[3], c[2], z, shade(base, 0.78), s, rows);
+    wallFace(c[2], c[1], z, shade(base, 0.64), s, rows);
+    polygon(c, z); ctx.fillStyle = base; ctx.fill();
     ctx.strokeStyle = 'rgba(0,0,0,0.18)'; ctx.lineWidth = 1; ctx.stroke();
     var id = state.board.wall[y][x];
     if (!id) return;
