@@ -34,6 +34,9 @@ var MODU_CONFIG = {
     { id: 'toilet', name: '변기', layer: 'floor', group: '설비', w: 2, h: 3, rotations: [0, 3], emoji: '🚽', color: '#ffffff',
       desc: '꼭 필요해요. 오른쪽 위 벽이나 왼쪽 위 벽에 붙여 놓을 수 있어요.' },
     // anchor: 'center' = 그림 가운데를 차지한 칸들의 가운데 위에 둠 (벽에서 앞으로 튀어나온 큰 벽걸이 물건)
+    // 실제 약 35 × 50cm. 그림이 오기 전까지 임시 그림
+    { id: 'childToilet', name: '아동용 변기', layer: 'floor', group: '설비', w: 2, h: 2, rotations: [0, 3], emoji: '🚽', color: '#fff3c4',
+      desc: '아이 몸에 맞는 작은 변기예요. 보호자와 함께 온 아이가 혼자 앉을 수 있어요.' },
     { id: 'sink', name: '세면대', layer: 'floor', mount: true, bands: [2], group: '설비', w: 3, h: 2, rotations: [0, 3], anchor: 'center', isoW: 2.3, emoji: '🚰', color: '#ffffff',
       desc: '벽에 거는 세면대예요. 뒤쪽 벽 바로 옆에 가운데 높이로 붙고, 아래가 비어 있어 휠체어도 다가갈 수 있어요.' },
     { id: 'sinkLow', name: '낮은 세면대', layer: 'floor', mount: true, bands: [1], group: '설비', w: 3, h: 2, rotations: [0, 3], anchor: 'center', isoW: 2.3, emoji: '🚰', color: '#cfeee6',
@@ -70,7 +73,7 @@ var MODU_CONFIG = {
       needs: ['입구에서 변기 옆까지 3칸 폭의 길', '휠체어가 돌 수 있는 6×6칸 빈 공간', '변기 바로 옆 손잡이', '낮은 세면대'],
       happy: '혼자서도 편하게 이용했어요!' },
     { id: 'family', name: '아이와 함께 온 보호자', emoji: '👩‍👧', color: '#e07a2f',
-      needs: ['변기', '유아 의자나 기저귀 교환대', '세면대'],
+      needs: ['변기', '아동용 변기', '유아 의자나 기저귀 교환대', '아이 손이 닿는 낮은 세면대'],
       happy: '아이와 함께 들어갈 수 있어서 좋아요!' },
     { id: 'trans', name: '트랜스젠더·논바이너리 이용자', emoji: '🧑', color: '#c2569b',
       needs: ['성별을 묻지 않는 1인 공간 (모두의 화장실이면 충분해요)', '변기', '세면대'],

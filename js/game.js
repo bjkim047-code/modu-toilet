@@ -366,7 +366,7 @@
 
   // ---------- 마름모(아이소메트릭) 보기 ----------
   // 설비 높이 (칸 너비 기준). 임시 상자와 그림 크기에 씀
-  var ISO_H = { toilet: 0.9, sink: 1.0, sinkLow: 0.7, diaper: 1.0, babySeat: 0.7, ostomy: 1.0, grabBar: 0.8, paperHolder: 0.6 };
+  var ISO_H = { childToilet: 0.6, toilet: 0.9, sink: 1.0, sinkLow: 0.7, diaper: 1.0, babySeat: 0.7, ostomy: 1.0, grabBar: 0.8, paperHolder: 0.6 };
 
   function shade(hex, k) {
     var n = parseInt(hex.slice(1), 16), r = n >> 16, g = (n >> 8) & 255, b = n & 255;
@@ -798,7 +798,11 @@
         c.drawImage(ti, 2, 30 - 28 * ti.height / ti.width, 56, 56 * ti.height / ti.width);
       } else if (it.layer === 'tactile') { drawTactile(c, 0, 0, 60); }
       else if (it.layer === 'wall') { drawWall(c, 0, 0, 60); drawWallItem(c, it.id, 0, 0, 60); }
-      else if (it.layer === 'floor') {
+      else if (it.layer === 'floor' && images['iso:' + it.id + ':a']) {
+        // 보드에 놓았을 때와 같은 그림(기본 방향)을 아이콘으로
+        var pi = images['iso:' + it.id + ':a'], k = 56 / Math.max(pi.width, pi.height);
+        c.drawImage(pi, (60 - pi.width * k) / 2, (60 - pi.height * k) / 2, pi.width * k, pi.height * k);
+      } else if (it.layer === 'floor') {
         var s = 56 / Math.max(it.w, it.h);
         c.fillStyle = C.floor; c.fillRect(0, 0, 60, 60);
         drawObject(c, it.id, 0, (60 - it.w * s) / 2, (60 - it.h * s) / 2, s);

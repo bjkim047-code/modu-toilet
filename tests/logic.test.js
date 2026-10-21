@@ -13,7 +13,8 @@ function goodBoard() {
   add('sink', 10, 1);           // 벽걸이, x9~11, y1~2
   add('diaper', 0, 9);          // 왼쪽 벽 벽걸이, x1~2, y8~10
   add('babySeat', 0, 13);       // 왼쪽 벽 벽걸이, x1~2, y13
-  add('ostomy', 14, 2);         // x14~15, y1~2
+  add('ostomy', 14, 2);
+  add('childToilet', 8, 10);    // x8~9, y10~11         // x14~15, y1~2
   L.placeWall(b, cfg, 'braille', 13, 14);
   // 점자블록: 입구(15,14) 위로 → 왼쪽 → 손잡이를 돌아 변기 오른쪽 (3,2)까지
   for (var y = 6; y <= 13; y++) L.paintTactile(b, 15, y);
@@ -301,10 +302,24 @@ tests['기저귀 교환대·유아 의자: 벽걸이 가운데 단'] = function 
   // 보호자는 벽에 건 유아 의자로도 성공
   var t = L.createBoard(cfg);
   L.addObject(t, cfg, 'toilet', 6, 2);
-  L.addObject(t, cfg, 'sink', 12, 1);
+  L.addObject(t, cfg, 'sinkLow', 12, 1);
+  L.addObject(t, cfg, 'childToilet', 10, 8);
   L.addObject(t, cfg, 'babySeat', 0, 6);
   var r = L.evaluate(t, cfg).filter(function (x) { return x.id === 'family'; })[0];
   assert.strictEqual(r.ok, true, r.reason);
+};
+
+tests['보호자: 아동용 변기와 낮은 세면대가 필요'] = function () {
+  var b = goodBoard();
+  assert.strictEqual(results(b).family.ok, true);
+  var noChild = goodBoard();
+  noChild.objects = noChild.objects.filter(function (o) { return o.id !== 'childToilet'; });
+  assert.match(results(noChild).family.reason, /아동용 변기/);
+  var noLow = goodBoard();
+  noLow.objects = noLow.objects.filter(function (o) { return o.id !== 'sinkLow'; });
+  var r = results(noLow);
+  assert.match(r.family.reason, /낮은 세면대/);
+  assert.strictEqual(r.trans.ok, true, '일반 세면대만 있어도 다른 이용객은 성공');
 };
 
 var failed = 0;

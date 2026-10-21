@@ -311,8 +311,9 @@ var ModuLogic = (function () {
       ],
       family: [
         hasToilet, toilet2,
+        c(function () { return reachable(['childToilet'], walk2); }, '아이가 쓸 아동용 변기가 없어요.'),
         c(function () { return reachable(['babySeat', 'diaper'], walk2); }, '아이를 앉히거나 기저귀를 갈 곳이 없어요.'),
-        sink2
+        c(function () { return reachable(['sinkLow'], walk2); }, '아이 손이 닿는 낮은 세면대가 없어요.')
       ],
       trans: [hasToilet, toilet2, sink2],
       ostomy: [
