@@ -36,6 +36,7 @@
     if (it.layer === 'floor' || it.layer === 'wall') ['a', 'b'].forEach(function (d) { tryImage('iso:' + it.id + ':' + d, 'assets/items/' + it.id + '_iso_' + d + '.png'); });
   });
   ['floor', 'wall', 'entrance', 'tactile'].forEach(function (id) { tryImage('item:' + id, 'assets/items/' + id + '.png'); });
+  tryImage('iso:tactile:a', 'assets/items/tactile_iso_a.png');  // 마름모 보기용 점자블록 타일
   cfg.visitors.forEach(function (v) {
     ['normal', 'happy', 'sad'].forEach(function (f) { tryImage('visitor:' + v.id + ':' + f, 'assets/visitors/' + v.id + '_' + f + '.png'); });
   });
@@ -405,7 +406,12 @@
     else ctx.fillStyle = C.floor;
     ctx.fill();
     ctx.strokeStyle = C.floorLine; ctx.lineWidth = 1; ctx.stroke();
-    if (b.tactile[y][x]) {
+    var tile = images['iso:tactile:a'];
+    if (b.tactile[y][x] && tile) {
+      // 타일 그림의 윗면 마름모를 칸 마름모에 맞춤 (두께는 아래로)
+      var top = P(x, y, s), th = s * tile.height / tile.width;
+      ctx.drawImage(tile, top.x - s / 2, top.y, s, th);
+    } else if (b.tactile[y][x]) {
       var i = corners(x + 0.06, y + 0.06, 0.88, 0.88, s);
       polygon(i); ctx.fillStyle = C.tactile; ctx.fill();
       ctx.fillStyle = C.tactileDot;
@@ -787,7 +793,10 @@
       var it = L.itemById(cfg, btn.dataset.id);
       var c = btn.querySelector('canvas').getContext('2d');
       c.clearRect(0, 0, 60, 60);
-      if (it.layer === 'tactile') { drawTactile(c, 0, 0, 60); }
+      if (it.layer === 'tactile' && images['iso:tactile:a']) {
+        var ti = images['iso:tactile:a'];
+        c.drawImage(ti, 2, 30 - 28 * ti.height / ti.width, 56, 56 * ti.height / ti.width);
+      } else if (it.layer === 'tactile') { drawTactile(c, 0, 0, 60); }
       else if (it.layer === 'wall') { drawWall(c, 0, 0, 60); drawWallItem(c, it.id, 0, 0, 60); }
       else if (it.layer === 'floor') {
         var s = 56 / Math.max(it.w, it.h);
