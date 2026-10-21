@@ -171,6 +171,19 @@ body {
 .info b { font-weight: 800; }
 .info .warn { color: var(--bad); }
 .info .muted { color: var(--muted); }
+.band-bar {
+  position: absolute; left: 50%; bottom: 8px; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 4px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 999px;
+  padding: 4px 4px 4px 12px; font-size: 12px; font-weight: 800; white-space: nowrap;
+  box-shadow: 0 4px 14px rgba(10, 16, 24, 0.14);
+}
+.chip {
+  font: 600 12px var(--body); padding: 3px 9px; border-radius: 999px; cursor: pointer;
+  border: 1px solid var(--line); background: var(--panel); color: var(--ink);
+}
+.chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 /* 결과창, 확인창 */
 .result, .confirm {

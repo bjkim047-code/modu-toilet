@@ -15,6 +15,7 @@
     board: load() || L.createBoard(cfg),
     tool: 'toilet',
     selected: -1,    // 선택한 설비 번호
+    band: 2,         // 새로 붙일 벽 물건의 높이 단 (높이를 고를 수 있는 물건만)
     cam: { scale: 20, ox: 0, oy: 0, fit: 20 },
     hover: null,
     pan: false,
@@ -51,6 +52,13 @@
       d.objects = d.objects.filter(function (o) { return L.itemById(cfg, o.id); });
       // 예전 저장본의 손잡이는 한 번 돌려야 같은 자리를 차지함
       if (old) d.objects.forEach(function (o) { if (o.id === 'grabBar') o.rot = (o.rot + 1) % 4; });
+      // 예전 저장본: 바깥 벽 칸에 붙어 있던 비상벨은 벽 옆 칸의 가운데 높이 물건으로 옮김
+      for (var y = 0; y < ROWS; y++) for (var x = 0; x < COLS; x++) {
+        if (d.wall[y][x] !== 'bell') continue;
+        d.wall[y][x] = null;
+        if (y === 0 && x > 0) d.objects.push({ id: 'bell', x: x, y: 1, rot: 0, band: 2 });
+        else if (x === 0 && y > 0) d.objects.push({ id: 'bell', x: 1, y: y, rot: 3, band: 2 });
+      }
       // 규칙이 바뀌어 지금은 놓을 수 없는 설비(예: 예전 2×2 휴지걸이)는 버림
       var objs = d.objects;
       d.objects = [];
@@ -292,8 +300,12 @@
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText('입구', mid * s, (e[0].y + 0.55) * s);
 
-    ['floor', 'mid'].forEach(function (level) {
-      b.objects.forEach(function (o) { if (L.levelOf(cfg, o) === level) drawObject(ctx, o.id, o.rot, o.x * s, o.y * s, s); });
+    ['floor', 'w1', 'w2', 'w3'].forEach(function (level) {
+      b.objects.forEach(function (o) {
+        if (L.levelOf(cfg, o) !== level) return;
+        drawObject(ctx, o.id, o.rot, o.x * s, o.y * s, s);
+        if (L.itemById(cfg, o.id).bands && L.itemById(cfg, o.id).bands.length > 1) drawBandBadge(o, s);
+      });
     });
 
     // 선택한 설비
@@ -315,11 +327,20 @@
     }
   }
 
+  // 높이를 고를 수 있는 벽 물건: 네모 보기에서 몇 단인지 작은 숫자로 표시
+  function drawBandBadge(o, s) {
+    var r = Math.max(6, s * 0.2), cx = (o.x + 1) * s - r, cy = o.y * s + r;
+    ctx.fillStyle = '#1d5fb8'; ctx.beginPath(); ctx.arc(cx, cy, r, 0, 7); ctx.fill();
+    ctx.fillStyle = '#ffffff'; ctx.font = '800 ' + Math.round(r * 1.3) + 'px sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(String(L.bandOf(cfg, o)), cx, cy + 0.5);
+  }
+
   // 마우스를 올린 자리에 놓일 설비 (놓을 수 없는 칸이면 null)
   function ghostObject() {
     var it = L.itemById(cfg, state.tool), h = state.hover;
     if (it.layer !== 'floor' || sameLevelAt(h, it) !== -1) return null;
-    var o = L.placement(state.board, cfg, it.id, h.x, h.y, 0);
+    var o = L.placement(state.board, cfg, it.id, h.x, h.y, 0, state.band);
     o.ok = L.fits(state.board, cfg, o, -1).ok;
     return o;
   }
@@ -429,7 +450,7 @@
     var it = L.itemById(cfg, o.id), sz = L.sizeOf(cfg, o);
     var wallSide = o.rot === 3 ? 'left' : 'top';
     var p = wallSide === 'top' ? P(o.x + sz.w / 2, o.y, s) : P(o.x, o.y + sz.h / 2, s);
-    p.y -= WALL_H * s * 0.5;
+    p.y -= WALL_H * s * (L.bandOf(cfg, o) - 0.5) / 3;  // 3단 중 해당 단의 가운데 높이
     var img = images['iso:' + o.id + ':' + (o.rot % 2 ? 'b' : 'a')];
     ctx.save();
     if (alpha !== undefined) ctx.globalAlpha = alpha;
@@ -451,7 +472,7 @@
   }
 
   function drawIsoObject(o, s, alpha) {
-    if (L.levelOf(cfg, o) === 'mid') return drawIsoWallMounted(o, s, alpha);
+    if (L.isMounted(cfg, o)) return drawIsoWallMounted(o, s, alpha);
     var it = L.itemById(cfg, o.id), sz = L.sizeOf(cfg, o);
     var z = (ISO_H[o.id] || 0.8) * s;
     var c = corners(o.x, o.y, sz.w, sz.h, s);
@@ -519,9 +540,9 @@
     var depthOf = function (o) { var sz = L.sizeOf(cfg, o); return o.x + o.y + (sz.w + sz.h) / 2; };
     b.objects.forEach(function (o) {
       var d = depthOf(o);
-      if (L.levelOf(cfg, o) === 'mid') {
-        // 벽에 붙은 물건은 벽 바로 앞 깊이. 같은 칸에 바닥 설비가 있으면 그보다 앞에 그려서 보이게 함
-        d = depthOf(o) - 0.95;
+      if (L.isMounted(cfg, o)) {
+        // 벽에 붙은 물건은 벽 바로 앞 깊이(높은 단이 나중에). 같은 칸에 바닥 설비가 있으면 그보다 앞에 그려서 보이게 함
+        d = depthOf(o) - 0.95 + L.bandOf(cfg, o) * 0.001;
         var cells = L.cellsOf(cfg, o);
         b.objects.forEach(function (f) {
           if (L.levelOf(cfg, f) !== 'floor') return;
@@ -767,7 +788,26 @@
     var it = L.itemById(cfg, id);
     var size = it.layer === 'floor' ? ' (가로 ' + it.w + ' × 세로 ' + it.h + '칸)' : '';
     showInfo('<b>' + esc(it.name) + '</b>' + size + ' · ' + esc(it.desc));
+    renderBandBar(it);
   }
+
+  // 높이를 고를 수 있는 물건을 고른 동안 보드 아래에 높이 버튼 [아래][가운데][위]
+  function renderBandBar(it) {
+    var bar = $('band-bar');
+    if (!it.bands || it.bands.length < 2) { bar.hidden = true; return; }
+    if (it.bands.indexOf(state.band) === -1) state.band = it.bands[0];
+    bar.innerHTML = '<span>붙일 높이</span>' + it.bands.map(function (n) {
+      return '<button type="button" class="chip" data-band="' + n + '" aria-pressed="' + (n === state.band) + '">' + BAND_NAME[n] + '</button>';
+    }).join('');
+    bar.hidden = false;
+  }
+  $('band-bar').addEventListener('click', function (e) {
+    var btn = e.target.closest && e.target.closest('[data-band]');
+    if (!btn) return;
+    state.band = Number(btn.dataset.band);
+    renderBandBar(L.itemById(cfg, state.tool));
+    state.dirty = true;
+  });
 
   // ---------- 선택한 설비: 돌리기, 지우기 ----------
   function select(i) {
@@ -778,10 +818,27 @@
     $('sel-name').textContent = it.name;
     $('btn-rotate').disabled = it.rotatable === false;
     $('btn-rotate').title = it.rotatable === false ? '방향을 바꿀 수 없어요' : '';
+    updateBandButton();
     bar.hidden = false;
     updateHint();
     state.dirty = true;
   }
+  // 높이를 고를 수 있는 벽 물건이면 '⇕ 높이 N단' 버튼을 보여 줌
+  var BAND_NAME = { 1: '아래', 2: '가운데', 3: '위' };
+  function updateBandButton() {
+    var o = state.board.objects[state.selected], it = o && L.itemById(cfg, o.id);
+    var show = !!(it && it.bands && it.bands.length > 1);
+    $('btn-band').hidden = !show;
+    if (show) $('btn-band').textContent = '⇕ 높이: ' + BAND_NAME[L.bandOf(cfg, o)];
+  }
+  $('btn-band').addEventListener('click', function () {
+    if (state.selected === -1) return;
+    var r = L.cycleBand(state.board, cfg, state.selected);
+    if (r.ok) {
+      state.band = L.bandOf(cfg, state.board.objects[state.selected]);  // 다음에 붙일 때도 이 높이로
+      updateBandButton(); renderBandBar(L.itemById(cfg, state.tool)); changed(); save();
+    } else warn(r.msg);
+  });
   $('btn-rotate').addEventListener('click', function () {
     if (state.selected === -1) return;
     var r = L.rotateObject(state.board, cfg, state.selected);
@@ -832,7 +889,7 @@
     // 설비 도구: 같은 높이 층의 설비를 누르면 선택하고 끌어서 옮김, 아니면 새로 놓기
     var i = sameLevelAt(cell, it);
     if (i === -1) {
-      var add = L.addObject(b, cfg, it.id, cell.x, cell.y, 0);
+      var add = L.addObject(b, cfg, it.id, cell.x, cell.y, 0, state.band);
       if (!add.ok) { warn(add.msg); return null; }
       i = add.index;
       changed();
@@ -846,9 +903,10 @@
   // 그 칸에서 도구와 같은 높이 층에 있는 설비 번호 (없으면 -1)
   function sameLevelAt(cell, it) {
     var b = state.board, i = L.objectAt(b, cfg, cell.x, cell.y);
-    if (i !== -1 && L.levelOf(cfg, b.objects[i]) === (it.level || 'floor')) return i;
+    var toolLevel = L.levelOf(cfg, { id: it.id, band: state.band });
+    if (i !== -1 && L.levelOf(cfg, b.objects[i]) === toolLevel) return i;
     // 위층 물건이 가리고 있으면 바닥 설비를 다시 찾음
-    if (i !== -1 && (it.level || 'floor') === 'floor') {
+    if (i !== -1 && toolLevel === 'floor') {
       for (var k = 0; k < b.objects.length; k++) {
         var o = b.objects[k];
         if (L.levelOf(cfg, o) !== 'floor') continue;

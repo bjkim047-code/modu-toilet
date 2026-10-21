@@ -8,7 +8,7 @@
 //   assets/items/<물건 id>.png       예) assets/items/toilet.png
 //     크기는 기본 방향 기준 (가로 w칸 × 세로 h칸) × 128px. 예) 변기 256×384px (64px 단위도 됨)
 //     방향을 돌리면 그림도 함께 돌아갑니다. 기본 방향은 벽이 위쪽에 있는 모습입니다.
-//   assets/items/floor.png, wall.png, entrance.png, tactile.png, braille.png, bell.png  (1칸, 정사각형)
+//   assets/items/floor.png, wall.png, entrance.png, tactile.png, braille.png  (1칸, 정사각형)
 //   assets/visitors/<이용객 id>_normal.png, _happy.png, _sad.png
 //   마름모 보기용 방향별 그림 (있으면 위 그림 대신 씀):
 //     assets/items/<id>_iso_a.png : 왼쪽 아래를 보는 모습 (오른쪽 위 벽에 붙음, 기본 방향)
@@ -48,13 +48,14 @@ var MODU_CONFIG = {
 
     { id: 'braille', name: '점자 안내판', layer: 'wall', group: '벽에 붙이기',
       desc: '입구 옆 바깥 벽에 붙여 주세요. 손으로 읽는 안내판이에요.' },
-    { id: 'bell', name: '비상벨', layer: 'wall', group: '벽에 붙이기', emoji: '🚨',
-      desc: '위급할 때 누르는 벨이에요. 바깥 벽에 붙여 주세요.' },
-    // level: 'mid' = 뒤쪽 벽 바로 옆 칸, 벽 가운데 단 높이에 붙음. 바닥 설비와 같은 칸에 겹쳐 놓을 수 있음
-    { id: 'paperHolder', name: '휴지걸이', layer: 'floor', level: 'mid', group: '벽에 붙이기', w: 1, h: 1, rotations: [0, 3], emoji: '🧻', color: '#ffffff',
+    // mount: 뒤쪽 벽 바로 옆 칸의 벽에 붙는 물건. bands: 붙일 수 있는 벽 높이 단 (1=아래, 2=가운데, 3=위)
+    //   높이 단이 다르면 같은 칸에 겹쳐 놓을 수 있고, 바닥 설비와도 겹칠 수 있음
+    { id: 'bell', name: '비상벨', layer: 'floor', mount: true, bands: [1, 2, 3], group: '벽에 붙이기', w: 1, h: 1, rotations: [0, 3], along: true, isoW: 0.42, emoji: '🚨', color: '#ffffff',
+      desc: '위급할 때 누르는 벨이에요. 뒤쪽 벽 바로 옆 칸에 붙이고, 높이(아래·가운데·위)를 고를 수 있어요.' },
+    { id: 'paperHolder', name: '휴지걸이', layer: 'floor', mount: true, bands: [2], group: '벽에 붙이기', w: 1, h: 1, rotations: [0, 3], emoji: '🧻', color: '#ffffff',
       desc: '뒤쪽 벽 바로 옆 칸에 붙여요. 벽 가운데 높이라 변기 같은 설비와 같은 칸에 겹쳐 놓을 수 있어요.' },
     // along: 벽을 따라 길게 붙는 물건 (그림 가운데를 벽 선에 맞춤). isoW: 마름모 보기에서 그림 너비 (칸 너비 기준)
-    { id: 'towelBar', name: '수건걸이', layer: 'floor', level: 'mid', group: '벽에 붙이기', w: 2, h: 1, rotations: [0, 3], along: true, isoW: 1.15, emoji: '🧺', color: '#ffffff',
+    { id: 'towelBar', name: '수건걸이', layer: 'floor', mount: true, bands: [2], group: '벽에 붙이기', w: 2, h: 1, rotations: [0, 3], along: true, isoW: 1.15, emoji: '🧺', color: '#ffffff',
       desc: '뒤쪽 벽을 따라 2칸에 걸쳐 붙여요. 휴지걸이와 같은 벽 가운데 높이라 휴지걸이와는 겹칠 수 없어요.' },
 
     { id: 'eraser', name: '지우개', layer: 'tool', group: '도구', emoji: '🧽',

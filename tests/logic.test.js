@@ -133,10 +133,8 @@ var tests = {
     assert.strictEqual(L.placeWall(b, cfg, 'braille', 5, 5).ok, false);
     assert.strictEqual(L.placeWall(b, cfg, 'braille', 15, 14).ok, false);
     assert.ok(L.placeWall(b, cfg, 'braille', 13, 14).ok);
-    // 비상벨도 바깥 벽에만, 같은 칸에 붙이면 바꿔 붙임
-    assert.strictEqual(L.placeWall(b, cfg, 'bell', 5, 5).ok, false);
-    assert.ok(L.placeWall(b, cfg, 'bell', 13, 14).ok);
-    assert.strictEqual(b.wall[14][13], 'bell');
+    // 같은 칸에 다른 벽 물건이 오면 바꿔 붙임 (지금은 점자 안내판만 벽 칸에 붙음)
+    assert.strictEqual(L.placeWall(b, cfg, 'bell', 13, 14).ok, false, '비상벨은 이제 벽 옆 칸에 붙는 물건');
     // 휴지걸이는 1×1, 벽 바로 옆 칸에만
     assert.strictEqual(L.addObject(b, cfg, 'paperHolder', 10, 10).ok, false);
   }
@@ -208,6 +206,36 @@ tests['수건걸이: 벽을 따라 2칸, 휴지걸이와 같은 층'] = function
   assert.ok(c.ok, c.msg);
   assert.ok(L.rotateObject(b, cfg, c.index).ok);
   assert.deepStrictEqual([b.objects[c.index].x, b.objects[c.index].y, b.objects[c.index].rot], [1, 1, 3]);
+};
+
+tests['비상벨: 1×1, 벽 높이 3단 어디든, 단마다 따로 겹침'] = function () {
+  var b = L.createBoard(cfg);
+  var p = L.addObject(b, cfg, 'paperHolder', 5, 1);          // 가운데 단
+  assert.ok(p.ok);
+  // 같은 칸 가운데 단에는 안 되고, 아래·위 단에는 됨
+  assert.strictEqual(L.addObject(b, cfg, 'bell', 5, 1, 0, 2).ok, false);
+  var lo = L.addObject(b, cfg, 'bell', 5, 1, 0, 1);
+  var hi = L.addObject(b, cfg, 'bell', 5, 0, 0, 3);          // 벽 면을 눌러도 됨
+  assert.ok(lo.ok && hi.ok);
+  assert.deepStrictEqual(L.sizeOf(cfg, b.objects[hi.index]), { w: 1, h: 1 });
+  assert.deepStrictEqual([b.objects[hi.index].x, b.objects[hi.index].y, L.bandOf(cfg, b.objects[hi.index])], [5, 1, 3]);
+  // 세 단이 다 차면 높이를 바꿀 수 없음
+  assert.strictEqual(L.cycleBand(b, cfg, lo.index).ok, false);
+  // 한 칸 비우면 높이 바꾸기: 비어 있는 단으로 감
+  L.removeObject(b, p.index);
+  var lo2 = b.objects.findIndex(function (o) { return o.id === 'bell' && o.band === 1; });
+  assert.ok(L.cycleBand(b, cfg, lo2).ok);
+  assert.strictEqual(b.objects[lo2].band, 2);
+  // 휴지걸이는 높이 고정
+  var q = L.addObject(b, cfg, 'paperHolder', 9, 1);
+  assert.strictEqual(L.cycleBand(b, cfg, q.index).ok, false);
+  // 벽에서 먼 칸은 안 됨, 왼쪽 벽은 방향 3
+  assert.strictEqual(L.addObject(b, cfg, 'bell', 8, 8, 0, 1).ok, false);
+  var l = L.addObject(b, cfg, 'bell', 1, 7, 0, 1);
+  assert.strictEqual(b.objects[l.index].rot, 3);
+  // 옮겨도 높이 단은 그대로
+  assert.ok(L.moveObject(b, cfg, l.index, 1, 9).ok);
+  assert.strictEqual(L.bandOf(cfg, b.objects[l.index]), 1);
 };
 
 var failed = 0;
