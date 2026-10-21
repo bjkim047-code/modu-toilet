@@ -465,7 +465,12 @@
     if (alpha !== undefined) ctx.globalAlpha = alpha;
     if (img) {
       var iw = s * (it.isoW || 0.85), ih = iw * img.height / img.width;
-      if (it.along) {
+      if (it.anchor === 'center') {
+        // 벽에서 튀어나온 큰 물건: 차지한 칸들 가운데 위, 해당 단 높이에
+        var cp = P(o.x + sz.w / 2, o.y + sz.h / 2, s);
+        cp.y -= WALL_H * s * (L.bandOf(cfg, o) - 0.5) / 3;
+        ctx.drawImage(img, cp.x - iw / 2, cp.y - ih * 0.55, iw, ih);
+      } else if (it.along) {
         // 벽을 따라 붙는 물건: 그림 가운데를 벽 선 가운데에
         ctx.drawImage(img, p.x - iw / 2, p.y - ih / 2, iw, ih);
       } else {

@@ -33,8 +33,9 @@ var MODU_CONFIG = {
 
     { id: 'toilet', name: '변기', layer: 'floor', group: '설비', w: 2, h: 3, rotations: [0, 3], emoji: '🚽', color: '#ffffff',
       desc: '꼭 필요해요. 오른쪽 위 벽이나 왼쪽 위 벽에 붙여 놓을 수 있어요.' },
-    { id: 'sink', name: '세면대', layer: 'floor', group: '설비', w: 3, h: 2, emoji: '🚰', color: '#ffffff',
-      desc: '손을 씻는 곳이에요.' },
+    // anchor: 'center' = 그림 가운데를 차지한 칸들의 가운데 위에 둠 (벽에서 앞으로 튀어나온 큰 벽걸이 물건)
+    { id: 'sink', name: '세면대', layer: 'floor', mount: true, bands: [2], group: '설비', w: 3, h: 2, rotations: [0, 3], anchor: 'center', isoW: 2.3, emoji: '🚰', color: '#ffffff',
+      desc: '벽에 거는 세면대예요. 뒤쪽 벽 바로 옆에 가운데 높이로 붙고, 아래가 비어 있어 휠체어도 다가갈 수 있어요.' },
     { id: 'sinkLow', name: '낮은 세면대', layer: 'floor', group: '설비', w: 3, h: 2, emoji: '🚰', color: '#cfeee6',
       desc: '앉은 채로도 손이 닿는 높이예요. 휠체어 이용자, 어린이 모두 편해요.' },
     { id: 'diaper', name: '기저귀 교환대', layer: 'floor', group: '설비', w: 4, h: 3, emoji: '👶', color: '#fde9cf',

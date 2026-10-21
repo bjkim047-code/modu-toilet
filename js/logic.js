@@ -114,7 +114,11 @@ var ModuLogic = (function () {
     var o = { id: id, x: 0, y: 0, rot: it.rotatable === false ? 0 : (rot || 0) };
     if (it.mount) {
       o.band = it.bands.indexOf(band) !== -1 ? band : it.bands[0];
-      snapToWall(o, cx, cy); clampIn(b, cfg, o);
+      snapToWall(o, cx, cy);
+      // 벽을 따라 긴 물건은 누른 칸이 가운데가 되도록
+      var ms = sizeOf(cfg, o);
+      if (o.rot === 0) o.x -= Math.floor((ms.w - 1) / 2); else o.y -= Math.floor((ms.h - 1) / 2);
+      clampIn(b, cfg, o);
       return o;
     }
     var s = sizeOf(cfg, o);
