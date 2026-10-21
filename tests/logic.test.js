@@ -62,11 +62,11 @@ var tests = {
   },
   '길이 좁으면 휠체어 실패, 다른 사람은 통과': function () {
     var b = goodBoard();
-    // 변기 오른쪽(x4~5) 통로를 2칸 폭으로 좁힘: 오스토미 세척대 두 개를 x6~7, y1~4에 둠
+    // 변기 오른쪽(x4~5) 통로를 2칸 폭으로 좁힘: 오스토미 세척대 두 개를 x6~8, y1~4에 둠
     // (낮은 세면대는 벽걸이라 바닥을 막지 않으므로 통로를 좁히지 않음)
     b.objects = b.objects.filter(function (o) { return o.id !== 'ostomy'; });
-    assert.ok(L.addObject(b, cfg, 'ostomy', 6, 1).ok);
-    assert.ok(L.addObject(b, cfg, 'ostomy', 6, 3).ok);
+    assert.ok(L.addObject(b, cfg, 'ostomy', 7, 1).ok);   // x6~8, y1~2
+    assert.ok(L.addObject(b, cfg, 'ostomy', 7, 3).ok);   // x6~8, y3~4
     var r = results(b);
     assert.strictEqual(r.wheelchair.ok, false);
     assert.match(r.wheelchair.reason, /3칸 폭/);
@@ -74,15 +74,17 @@ var tests = {
     assert.strictEqual(r.family.ok, true);
   },
   '6×6 공간이 없으면 휠체어 실패': function () {
-    // 5칸 폭 통로(아래쪽 가로 y9~13, 왼쪽 세로 x3~6)만 남기고 모두 채움
+    // 통로(아래쪽 가로 y9~13, 왼쪽 세로 x3~6)만 남기고 오른쪽 위(x7~18, y1~8)를 3×2 세척대로 채움
     var b = L.createBoard(cfg);
     L.addObject(b, cfg, 'toilet', 1, 1);       // x1~2, y1~3
     L.addObject(b, cfg, 'grabBar', 1, 5);      // 세로 손잡이 x1, y4~6
-    L.addObject(b, cfg, 'sinkLow', 8, 1);      // x7~9, y1~2
-    for (var y = 1; y <= 7; y += 2) for (var x = 1; x <= 17; x += 2) {
-      if (x + 1 >= 3 && x <= 6) continue;
-      L.addObject(b, cfg, 'ostomy', x, y);
+    L.addObject(b, cfg, 'sinkLow', 8, 1);      // 벽걸이, x7~9, y1~2
+    for (var y = 1; y <= 7; y += 2) for (var x = 7; x <= 16; x += 3) {
+      var o = { id: 'ostomy', x: x, y: y, rot: 0 };
+      assert.ok(L.fits(b, cfg, o, -1).ok, x + ',' + y);
+      b.objects.push(o);
     }
+    b.objects.push({ id: 'babySeat', x: 1, y: 7, rot: 0 });  // 왼쪽 아래 구석(x1~2, y7~9)도 막음
     var r = results(b);
     assert.strictEqual(r.wheelchair.ok, false);
     assert.match(r.wheelchair.reason, /6×6/);

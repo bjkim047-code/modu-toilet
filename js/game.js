@@ -50,6 +50,11 @@
       if (!d) { d = JSON.parse(localStorage.getItem(OLD_SAVE_KEY)); old = true; }
       if (!d || d.cols !== COLS || d.rows !== ROWS || !Array.isArray(d.objects)) return null;
       d.objects = d.objects.filter(function (o) { return L.itemById(cfg, o.id); });
+      // 돌릴 수 있는 방향이 줄어든 설비(예: 오스토미 세척대)는 첫 방향으로 맞춤
+      d.objects.forEach(function (o) {
+        var rots = L.itemById(cfg, o.id).rotations;
+        if (rots && rots.indexOf(o.rot) === -1) o.rot = rots[0];
+      });
       // 예전 저장본의 손잡이는 한 번 돌려야 같은 자리를 차지함
       if (old) d.objects.forEach(function (o) { if (o.id === 'grabBar') o.rot = (o.rot + 1) % 4; });
       // 예전 저장본: 바깥 벽 칸에 붙어 있던 비상벨은 벽 옆 칸의 가운데 높이 물건으로 옮김

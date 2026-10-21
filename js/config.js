@@ -42,8 +42,9 @@ var MODU_CONFIG = {
       desc: '아이를 돌보는 보호자는 성별과 상관없이 필요해요.' },
     { id: 'babySeat', name: '유아 의자', layer: 'floor', group: '설비', w: 2, h: 3, emoji: '🪑', color: '#fde9cf',
       desc: '보호자가 볼일을 보는 동안 아이가 앉아 기다리는 의자예요.' },
-    { id: 'ostomy', name: '오스토미 세척대', layer: 'floor', group: '설비', w: 2, h: 2, emoji: '🚿', color: '#dfe9fb',
-      desc: '장루·요루 주머니를 비우고 씻는 설비예요.' },
+    // 실제 제품은 약 가로 60 × 깊이 65cm. 벽 판까지 생각해 벽을 따라 3칸, 깊이 2칸
+    { id: 'ostomy', name: '오스토미 세척대', layer: 'floor', group: '설비', w: 3, h: 2, rotations: [0, 3], emoji: '🚿', color: '#dfe9fb',
+      desc: '장루·요루 주머니를 비우고 씻는 설비예요. 오른쪽 위 벽이나 왼쪽 위 벽을 등지게 놓을 수 있어요.' },
     { id: 'grabBar', name: '손잡이', layer: 'floor', group: '설비', w: 1, h: 3, emoji: '', color: '#f08a24',
       desc: '변기 바로 옆에 붙여 주세요. 몸을 옮기거나 일어설 때 잡아요.' },
 
