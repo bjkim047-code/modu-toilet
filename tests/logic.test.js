@@ -11,8 +11,8 @@ function goodBoard() {
   add('grabBar', 1, 4, 1);      // 변기 아래 가로로 돌린 손잡이 x1~3, y4
   add('sinkLow', 6, 1);         // x5~7, y1~2
   add('sink', 10, 1);           // 벽걸이, x9~11, y1~2
-  add('diaper', 0, 9);          // 왼쪽 벽 벽걸이, x1~3, y8~11
-  add('babySeat', 0, 13);       // 왼쪽 벽 벽걸이, x1~3, y12~13
+  add('diaper', 0, 9);          // 왼쪽 벽 벽걸이, x1~2, y8~10
+  add('babySeat', 0, 13);       // 왼쪽 벽 벽걸이, x1~2, y13
   add('ostomy', 14, 2);         // x14~15, y1~2
   L.placeWall(b, cfg, 'braille', 13, 14);
   // 점자블록: 입구(15,14) 위로 → 왼쪽 → 손잡이를 돌아 변기 오른쪽 (3,2)까지
@@ -290,14 +290,14 @@ tests['기저귀 교환대·유아 의자: 벽걸이 가운데 단'] = function 
   assert.strictEqual(L.addObject(b, cfg, 'diaper', 10, 8).ok, false, '벽에서 먼 칸은 안 됨');
   var d = L.addObject(b, cfg, 'diaper', 10, 0);
   assert.ok(d.ok, d.msg);
-  assert.deepStrictEqual(L.sizeOf(cfg, b.objects[d.index]), { w: 4, h: 3 });
+  assert.deepStrictEqual(L.sizeOf(cfg, b.objects[d.index]), { w: 3, h: 2 });
   assert.strictEqual(L.bandOf(cfg, b.objects[d.index]), 2);
   // 같은 가운데 단의 세면대와 겹치면 안 되고, 바닥 설비(변기)와는 겹칠 수 있음
   assert.strictEqual(L.addObject(b, cfg, 'sink', 10, 1).ok, false);
   assert.ok(L.addObject(b, cfg, 'toilet', 10, 2).ok);
   var s = L.addObject(b, cfg, 'babySeat', 0, 6);
   assert.ok(s.ok, s.msg);
-  assert.deepStrictEqual(L.sizeOf(cfg, b.objects[s.index]), { w: 3, h: 2 });
+  assert.deepStrictEqual(L.sizeOf(cfg, b.objects[s.index]), { w: 2, h: 1 });
   // 보호자는 벽에 건 유아 의자로도 성공
   var t = L.createBoard(cfg);
   L.addObject(t, cfg, 'toilet', 6, 2);
