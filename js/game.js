@@ -38,7 +38,8 @@
   ['floor', 'wall', 'entrance', 'tactile'].forEach(function (id) { tryImage('item:' + id, 'assets/items/' + id + '.png'); });
   tryImage('iso:tactile:a', 'assets/items/tactile_iso_a.png');  // 마름모 보기용 점자블록 타일
   cfg.visitors.forEach(function (v) {
-    ['normal', 'happy', 'sad'].forEach(function (f) { tryImage('visitor:' + v.id + ':' + f, 'assets/visitors/' + v.id + '_' + f + '.png'); });
+    // walk_a: 오른쪽 위로 가는 뒷모습, walk_b: 왼쪽 위로 가는 뒷모습, happy/sad: 도착했을 때
+    ['normal', 'happy', 'sad', 'walk_a', 'walk_b'].forEach(function (f) { tryImage('visitor:' + v.id + ':' + f, 'assets/visitors/' + v.id + '_' + f + '.png'); });
   });
 
   // ---------- 저장 ----------
@@ -597,8 +598,11 @@
 
   function drawVisitor(v, px, py, size, face) {
     var img = images['visitor:' + v.id + ':' + face] || images['visitor:' + v.id + ':normal'];
+    var faceImg = !!images['visitor:' + v.id + ':' + face];
     if (img) {
-      ctx.drawImage(img, px - size / 2, py - size / 2, size, size);
+      // 그림 비율을 지키고 발(바퀴)이 바닥 위치(py + size * 0.45)에 닿게
+      var ih = size * 1.3, iw = ih * img.width / img.height;
+      ctx.drawImage(img, px - iw / 2, py + size * 0.45 - ih, iw, ih);
     } else {
       ctx.fillStyle = 'rgba(0,0,0,0.18)';
       ctx.beginPath(); ctx.ellipse(px, py + size * 0.42, size * 0.38, size * 0.1, 0, 0, 7); ctx.fill();
@@ -608,7 +612,7 @@
       ctx.beginPath(); ctx.arc(px, py, size * 0.38, 0, 7); ctx.fill();
       drawEmoji(ctx, v.emoji, px, py, size * 0.52);
     }
-    if (face !== 'normal') {
+    if ((face === 'happy' || face === 'sad') && !faceImg) {
       var fx = px + size * 0.36, fy = py - size * 0.36, fr = size * 0.24;
       ctx.fillStyle = '#ffffff';
       ctx.beginPath(); ctx.arc(fx, fy, fr, 0, 7); ctx.fill();
@@ -682,8 +686,15 @@
     var i = Math.min(Math.floor(f), r.path.length - 1), k = f - i;
     var a = r.path[i], b2 = r.path[Math.min(i + 1, r.path.length - 1)];
     var off = r.size / 2, arrived = run.t >= walkTime;
+    // 가는 방향: 오른쪽 위(y 감소)면 walk_a, 왼쪽 위(x 감소)면 walk_b. 앞쪽으로 갈 땐 직전 뒷모습 유지
+    var dir = 'walk_a';
+    for (var j = Math.min(i + 1, r.path.length - 1); j > 0; j--) {
+      var p0 = r.path[j - 1], p1 = r.path[j];
+      if (p1.y < p0.y) { dir = 'walk_a'; break; }
+      if (p1.x < p0.x) { dir = 'walk_b'; break; }
+    }
     return {
-      r: r, v: visitorById(r.id), arrived: arrived, face: arrived ? (r.ok ? 'happy' : 'sad') : 'normal',
+      r: r, v: visitorById(r.id), arrived: arrived, face: arrived ? (r.ok ? 'happy' : 'sad') : dir,
       wx: a.x + (b2.x - a.x) * k + off, wy: a.y + (b2.y - a.y) * k + off
     };
   }
