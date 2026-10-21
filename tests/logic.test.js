@@ -104,7 +104,13 @@ var tests = {
     var t = L.addObject(b, cfg, 'toilet', 5, 5);
     assert.ok(t.ok);
     assert.deepStrictEqual(L.sizeOf(cfg, b.objects[0]), { w: 2, h: 3 });
-    assert.strictEqual(L.rotateObject(b, cfg, 0).ok, false, '변기는 회전 불가');
+    // 변기는 두 방향(0, 3)만 오감
+    assert.ok(L.rotateObject(b, cfg, 0).ok);
+    assert.strictEqual(b.objects[0].rot, 3);
+    assert.deepStrictEqual(L.sizeOf(cfg, b.objects[0]), { w: 3, h: 2 });
+    assert.ok(L.rotateObject(b, cfg, 0).ok);
+    assert.strictEqual(b.objects[0].rot, 0);
+    assert.deepStrictEqual([b.objects[0].x, b.objects[0].y], [5, 4], '두 번 돌리면 제자리');
     assert.strictEqual(L.addObject(b, cfg, 'sink', 5, 5).ok, false, '겹치면 안 됨');
     var s = L.addObject(b, cfg, 'diaper', 12, 8);
     assert.ok(L.rotateObject(b, cfg, s.index).ok);

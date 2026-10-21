@@ -111,11 +111,12 @@ var ModuLogic = (function () {
     var o = b.objects[i];
     var it = itemById(cfg, o.id);
     if (it.rotatable === false) return { ok: false, msg: it.name + '은(는) 방향을 바꿀 수 없어요.' };
+    var rots = it.rotations || [0, 1, 2, 3];
     var s = sizeOf(cfg, o);
-    var cx = o.x + s.w / 2, cy = o.y + s.h / 2;
-    var n = { id: o.id, x: 0, y: 0, rot: (o.rot + 1) % 4 };
+    var n = { id: o.id, x: 0, y: 0, rot: rots[(rots.indexOf(o.rot) + 1) % rots.length] };
     var ns = sizeOf(cfg, n);
-    n.x = Math.round(cx - ns.w / 2); n.y = Math.round(cy - ns.h / 2);
+    // 가운데를 기준으로 돌리되, 반 칸은 버려서 다시 돌리면 제자리로 돌아오게 함
+    n.x = o.x + ((s.w - ns.w) / 2 | 0); n.y = o.y + ((s.h - ns.h) / 2 | 0);
     clampIn(b, cfg, n);
     var f = fits(b, cfg, n, i);
     if (!f.ok) return { ok: false, msg: '돌릴 자리가 없어요. 주변을 비워 주세요.' };

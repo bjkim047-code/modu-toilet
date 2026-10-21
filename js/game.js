@@ -30,7 +30,10 @@
     img.onload = function () { images[name] = img; state.dirty = true; drawPalette(); };
     img.src = src;
   }
-  cfg.items.forEach(function (it) { tryImage('item:' + it.id, 'assets/items/' + it.id + '.png'); });
+  cfg.items.forEach(function (it) {
+    tryImage('item:' + it.id, 'assets/items/' + it.id + '.png');
+    if (it.layer === 'floor') ['a', 'b'].forEach(function (d) { tryImage('iso:' + it.id + ':' + d, 'assets/items/' + it.id + '_iso_' + d + '.png'); });
+  });
   ['floor', 'wall', 'entrance', 'tactile'].forEach(function (id) { tryImage('item:' + id, 'assets/items/' + id + '.png'); });
   cfg.visitors.forEach(function (v) {
     ['normal', 'happy', 'sad'].forEach(function (f) { tryImage('visitor:' + v.id + ':' + f, 'assets/visitors/' + v.id + '_' + f + '.png'); });
@@ -401,17 +404,20 @@
     var it = L.itemById(cfg, o.id), sz = L.sizeOf(cfg, o);
     var z = (ISO_H[o.id] || 0.8) * s;
     var c = corners(o.x, o.y, sz.w, sz.h, s);
-    var img = images['item:' + o.id];
+    // 방향별 그림: 방향 0, 2는 a(왼쪽 아래를 봄), 1, 3은 b(오른쪽 아래를 봄)
+    var dirImg = images['iso:' + o.id + ':' + (o.rot % 2 ? 'b' : 'a')];
+    var img = dirImg || images['item:' + o.id];
     ctx.save();
     if (alpha !== undefined) ctx.globalAlpha = alpha;
     if (img) {
-      // 그림은 세워서 그리고, 옆으로 돌린 방향(1, 3)은 좌우를 뒤집음
+      // 그림은 세워서 그림. 방향별 그림이 없으면 옆 방향(1, 3)은 좌우를 뒤집음
       polygon(c); ctx.fillStyle = 'rgba(0,0,0,0.12)'; ctx.fill();
-      var maxW = c[1].x - c[3].x, maxH = (c[2].y - c[0].y) + z * 1.3;
+      var maxW = c[1].x - c[3].x, maxH = (c[2].y - c[0].y) + z * (dirImg ? 1.5 : 1.3);
       var k = Math.min(maxW / img.width, maxH / img.height);
       var iw = img.width * k, ih = img.height * k, cx = (c[1].x + c[3].x) / 2;
-      ctx.translate(cx, c[2].y);
-      if (o.rot % 2) ctx.scale(-1, 1);
+      // 방향별 그림은 바닥 칸 가운데보다 조금 앞에 세움
+      ctx.translate(cx, dirImg ? c[0].y + (c[2].y - c[0].y) * 0.8 : c[2].y);
+      if (!dirImg && o.rot % 2) ctx.scale(-1, 1);
       ctx.drawImage(img, -iw / 2, -ih, iw, ih);
     } else if (o.id === 'grabBar') {
       var a = P(o.x + (sz.w > sz.h ? 0.2 : 0.5), o.y + (sz.w > sz.h ? 0.5 : 0.2), s);

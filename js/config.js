@@ -10,6 +10,10 @@
 //     방향을 돌리면 그림도 함께 돌아갑니다. 기본 방향은 벽이 위쪽에 있는 모습입니다.
 //   assets/items/floor.png, wall.png, entrance.png, tactile.png, braille.png, bell.png  (1칸, 정사각형)
 //   assets/visitors/<이용객 id>_normal.png, _happy.png, _sad.png
+//   마름모 보기용 방향별 그림 (있으면 위 그림 대신 씀):
+//     assets/items/<id>_iso_a.png : 왼쪽 아래를 보는 모습 (오른쪽 위 벽에 붙음, 기본 방향)
+//     assets/items/<id>_iso_b.png : 오른쪽 아래를 보는 모습 (왼쪽 위 벽에 붙음)
+//   rotations: 돌릴 수 있는 방향 목록 (0=기본, 1, 2, 3 = 시계 방향 90도씩). 없으면 네 방향 모두
 //   파일이 있으면 그림을 쓰고, 없으면 임시 그림(이모지)을 씁니다.
 
 var MODU_CONFIG = {
@@ -27,8 +31,8 @@ var MODU_CONFIG = {
     { id: 'tactile', name: '점자블록', layer: 'tactile', group: '바닥',
       desc: '시각장애인이 발로 길을 알 수 있는 바닥이에요. 입구부터 변기 앞까지 이어 주세요. 설비 아래에도 깔 수 있어요.' },
 
-    { id: 'toilet', name: '변기', layer: 'floor', group: '설비', w: 2, h: 3, rotatable: false, emoji: '🚽', color: '#ffffff',
-      desc: '꼭 필요해요. 방향은 바꿀 수 없어요.' },
+    { id: 'toilet', name: '변기', layer: 'floor', group: '설비', w: 2, h: 3, rotations: [0, 3], emoji: '🚽', color: '#ffffff',
+      desc: '꼭 필요해요. 오른쪽 위 벽이나 왼쪽 위 벽에 붙여 놓을 수 있어요.' },
     { id: 'sink', name: '세면대', layer: 'floor', group: '설비', w: 3, h: 2, emoji: '🚰', color: '#ffffff',
       desc: '손을 씻는 곳이에요.' },
     { id: 'sinkLow', name: '낮은 세면대', layer: 'floor', group: '설비', w: 3, h: 2, emoji: '🚰', color: '#cfeee6',
