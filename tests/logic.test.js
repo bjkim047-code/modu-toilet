@@ -322,6 +322,18 @@ tests['보호자: 아동용 변기와 낮은 세면대가 필요'] = function ()
   assert.strictEqual(r.trans.ok, true, '일반 세면대만 있어도 다른 이용객은 성공');
 };
 
+tests['무지개 스티커: 벽 2칸, 높이 선택, 판정 영향 없음'] = function () {
+  var b = L.createBoard(cfg);
+  var r = L.addObject(b, cfg, 'rainbow', 6, 0, 0, 3);
+  assert.ok(r.ok, r.msg);
+  assert.deepStrictEqual(L.sizeOf(cfg, b.objects[r.index]), { w: 2, h: 1 });
+  assert.strictEqual(L.bandOf(cfg, b.objects[r.index]), 3);
+  assert.ok(L.addObject(b, cfg, 'paperHolder', 6, 1).ok, '다른 높이 단과는 겹칠 수 있음');
+  var before = JSON.stringify(L.evaluate(goodBoard(), cfg).map(function (x) { return x.ok; }));
+  var g = goodBoard(); L.addObject(g, cfg, 'rainbow', 0, 6, 0, 3);
+  assert.strictEqual(JSON.stringify(L.evaluate(g, cfg).map(function (x) { return x.ok; })), before);
+};
+
 var failed = 0;
 Object.keys(tests).forEach(function (name) {
   try { tests[name](); console.log('✓ ' + name); }

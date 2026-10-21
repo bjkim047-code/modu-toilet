@@ -63,6 +63,10 @@ var MODU_CONFIG = {
     { id: 'towelBar', name: '수건걸이', layer: 'floor', mount: true, bands: [2], group: '벽에 붙이기', w: 2, h: 1, rotations: [0, 3], along: true, isoW: 1.15, emoji: '🧺', color: '#ffffff',
       desc: '뒤쪽 벽을 따라 2칸에 걸쳐 붙여요. 휴지걸이와 같은 벽 가운데 높이라 휴지걸이와는 겹칠 수 없어요.' },
 
+    // 꾸미기용 벽 스티커. 판정에는 영향 없음. 높이(아래·가운데·위)를 고를 수 있음
+    { id: 'rainbow', name: '무지개 스티커', layer: 'floor', mount: true, bands: [3, 2, 1], group: '벽에 붙이기', w: 2, h: 1, rotations: [0, 3], along: true, isoW: 1.25, emoji: '🌈', color: '#ffffff',
+      desc: '벽에 붙이는 무지개 스티커예요. 모두를 환영한다는 표시가 돼요. 높이를 고를 수 있어요.' },
+
     { id: 'eraser', name: '지우개', layer: 'tool', group: '도구', emoji: '🧽',
       desc: '설비, 안내판, 점자블록을 지워요. 끌면 여러 개를 지울 수 있어요.' }
   ],

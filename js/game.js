@@ -537,7 +537,8 @@
     var b = state.board, x, y, items = [];
     for (y = 0; y < ROWS; y++) for (x = 0; x < COLS; x++) {
       if (L.isEntrance(cfg, x, y) || !L.isBorder(b, x, y)) drawIsoFloor(x, y, s);
-      else items.push({ d: x + y, draw: drawIsoWall.bind(null, x, y, s) });
+      // 뒤쪽 벽은 모든 것보다 뒤라 가장 먼저 그림 (벽에 붙인 물건이 옆 벽 칸에 가려지지 않게)
+      else items.push({ d: (x === 0 || y === 0) ? -1 + (x + y) * 0.001 : x + y, draw: drawIsoWall.bind(null, x, y, s) });
     }
     // 입구 글자
     var e = cfg.entrance, ep = P((e[0].x + e[e.length - 1].x + 1) / 2, e[0].y + 0.5, s);
