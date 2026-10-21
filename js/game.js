@@ -167,7 +167,8 @@
 
   // ---------- 보기 방식: 'iso'(마름모) 또는 'flat'(네모) ----------
   var VIEW_KEY = 'modu-toilet-view';
-  var WALL_H = 1.1;  // 마름모 보기에서 뒤쪽 벽 높이 (칸 너비 기준)
+  var WALL_H = 1.7;  // 마름모 보기에서 뒤쪽 벽 높이 (칸 너비 기준)
+  var BRICK = { face: '#b4705a', side: '#97584a', top: '#d8c7b6', mortar: '#e6d9cc', rows: 7 };
   state.view = 'iso';
   try { if (localStorage.getItem(VIEW_KEY) === 'flat') state.view = 'flat'; } catch (e) {}
 
@@ -386,10 +387,38 @@
   }
 
   // 벽 칸: 뒤쪽(위·왼쪽 테두리)은 높게, 앞쪽은 낮게
+  // 벽돌 면: 바닥 모서리 a→b 위로 높이 z만큼 세운 면에 벽돌을 엇갈려 쌓음
+  function brickFace(a, b, z, color, s, rows) {
+    ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.lineTo(b.x, b.y - z); ctx.lineTo(a.x, a.y - z); ctx.closePath();
+    ctx.fillStyle = color; ctx.fill();
+    ctx.save(); ctx.clip();
+    ctx.strokeStyle = BRICK.mortar; ctx.lineWidth = Math.max(1, s * 0.035);
+    ctx.beginPath();
+    var rh = z / rows;
+    for (var r = 0; r <= rows; r++) {
+      // 가로줄
+      ctx.moveTo(a.x, a.y - r * rh); ctx.lineTo(b.x, b.y - r * rh);
+      if (r === rows) break;
+      // 세로줄: 한 칸에 벽돌 2개, 줄마다 반 개씩 엇갈림
+      [0, 0.5].forEach(function (t) {
+        t += r % 2 ? 0.25 : 0;
+        var px = a.x + (b.x - a.x) * t, py = a.y + (b.y - a.y) * t - r * rh;
+        ctx.moveTo(px, py); ctx.lineTo(px, py - rh);
+      });
+    }
+    ctx.stroke();
+    ctx.restore();
+  }
+
   function drawIsoWall(x, y, s) {
     var back = x === 0 || y === 0;
-    var z = (back ? WALL_H : 0.22) * s;
-    isoBox(x, y, 1, 1, z, back ? '#5a6273' : '#4a5160', s);
+    var z = (back ? WALL_H : 0.3) * s;
+    var c = corners(x, y, 1, 1, s);
+    // 보이는 두 면(왼쪽 앞, 오른쪽 앞)과 윗면
+    brickFace(c[3], c[2], z, BRICK.face, s, back ? BRICK.rows : 1);
+    brickFace(c[2], c[1], z, BRICK.side, s, back ? BRICK.rows : 1);
+    polygon(c, z); ctx.fillStyle = BRICK.top; ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,0.18)'; ctx.lineWidth = 1; ctx.stroke();
     var id = state.board.wall[y][x];
     if (!id) return;
     // 벽에 붙인 물건: 방 쪽을 향한 면 가운데에
