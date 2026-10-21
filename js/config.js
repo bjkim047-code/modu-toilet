@@ -45,13 +45,14 @@ var MODU_CONFIG = {
       desc: '장루·요루 주머니를 비우고 씻는 설비예요.' },
     { id: 'grabBar', name: '손잡이', layer: 'floor', group: '설비', w: 1, h: 3, emoji: '', color: '#f08a24',
       desc: '변기 바로 옆에 붙여 주세요. 몸을 옮기거나 일어설 때 잡아요.' },
-    { id: 'paperHolder', name: '휴지걸이', layer: 'floor', group: '설비', w: 2, h: 2, emoji: '🧻', color: '#ffffff',
-      desc: '손잡이가 달린 휴지걸이예요. 변기에 앉은 채로 손이 닿는 곳에 두세요.' },
 
     { id: 'braille', name: '점자 안내판', layer: 'wall', group: '벽에 붙이기',
       desc: '입구 옆 바깥 벽에 붙여 주세요. 손으로 읽는 안내판이에요.' },
     { id: 'bell', name: '비상벨', layer: 'wall', group: '벽에 붙이기', emoji: '🚨',
       desc: '위급할 때 누르는 벨이에요. 바깥 벽에 붙여 주세요.' },
+    // level: 'mid' = 뒤쪽 벽 바로 옆 칸, 벽 가운데 단 높이에 붙음. 바닥 설비와 같은 칸에 겹쳐 놓을 수 있음
+    { id: 'paperHolder', name: '휴지걸이', layer: 'floor', level: 'mid', group: '벽에 붙이기', w: 1, h: 1, rotations: [0, 3], emoji: '🧻', color: '#ffffff',
+      desc: '뒤쪽 벽 바로 옆 칸에 붙여요. 벽 가운데 높이라 변기 같은 설비와 같은 칸에 겹쳐 놓을 수 있어요.' },
 
     { id: 'eraser', name: '지우개', layer: 'tool', group: '도구', emoji: '🧽',
       desc: '설비, 안내판, 점자블록을 지워요. 끌면 여러 개를 지울 수 있어요.' }

@@ -137,11 +137,51 @@ var tests = {
     assert.strictEqual(L.placeWall(b, cfg, 'bell', 5, 5).ok, false);
     assert.ok(L.placeWall(b, cfg, 'bell', 13, 14).ok);
     assert.strictEqual(b.wall[14][13], 'bell');
-    // 휴지걸이는 2×2 설비
-    var p = L.addObject(b, cfg, 'paperHolder', 10, 10);
-    assert.ok(p.ok);
-    assert.deepStrictEqual(L.sizeOf(cfg, b.objects[p.index]), { w: 2, h: 2 });
+    // 휴지걸이는 1×1, 벽 바로 옆 칸에만
+    assert.strictEqual(L.addObject(b, cfg, 'paperHolder', 10, 10).ok, false);
   }
+};
+
+tests['휴지걸이: 벽 가운데 단 층, 바닥 설비와 겹침 가능'] = function () {
+  var b = L.createBoard(cfg);
+  var t = L.addObject(b, cfg, 'toilet', 5, 2);           // x5~6, y1~3
+  assert.ok(t.ok);
+  // 위쪽 벽 바로 옆(y=1), 변기와 같은 칸에 겹쳐 놓을 수 있음
+  var p = L.addObject(b, cfg, 'paperHolder', 5, 1);
+  assert.ok(p.ok, p.msg);
+  assert.deepStrictEqual(L.sizeOf(cfg, b.objects[p.index]), { w: 1, h: 1 });
+  assert.strictEqual(b.objects[p.index].rot, 0);
+  // 같은 층에는 두 개를 겹칠 수 없음
+  assert.strictEqual(L.addObject(b, cfg, 'paperHolder', 5, 1).ok, false);
+  // 벽 칸을 누르면 바로 옆 칸으로, 왼쪽 벽이면 방향 3
+  var q = L.addObject(b, cfg, 'paperHolder', 0, 8);
+  assert.ok(q.ok);
+  assert.deepStrictEqual([b.objects[q.index].x, b.objects[q.index].y, b.objects[q.index].rot], [1, 8, 3]);
+  // 벽 칸을 누르면 그 벽에 붙은 물건을 찾음, 같은 칸이면 위층 물건을 먼저
+  assert.strictEqual(L.objectAt(b, cfg, 0, 8), q.index);
+  assert.strictEqual(L.objectAt(b, cfg, 5, 1), p.index);
+  // 방향은 모서리 칸에서만 바꿀 수 있음
+  assert.strictEqual(L.rotateObject(b, cfg, q.index).ok, false);
+  var c = L.addObject(b, cfg, 'paperHolder', 1, 1);
+  assert.ok(c.ok);
+  assert.ok(L.rotateObject(b, cfg, c.index).ok);
+  assert.strictEqual(b.objects[c.index].rot, 3);
+  // 끌어서 옮기면 붙는 벽도 바뀜
+  assert.ok(L.moveObject(b, cfg, c.index, 9, 1).ok);
+  assert.deepStrictEqual([b.objects[c.index].x, b.objects[c.index].y, b.objects[c.index].rot], [9, 1, 0]);
+  assert.strictEqual(L.moveObject(b, cfg, c.index, 9, 6).ok, false);
+  // 바닥을 막지 않음: 휴지걸이만 있는 칸은 지나갈 수 있음
+  var walkB = L.createBoard(cfg);
+  L.addObject(walkB, cfg, 'toilet', 2, 2);
+  L.addObject(walkB, cfg, 'sink', 10, 1);
+  var before = JSON.stringify(L.evaluate(walkB, cfg));
+  L.addObject(walkB, cfg, 'paperHolder', 3, 1);
+  L.addObject(walkB, cfg, 'paperHolder', 1, 5);
+  assert.strictEqual(JSON.stringify(L.evaluate(walkB, cfg)), before);
+  // 지우개는 위층(휴지걸이)부터
+  L.eraseAt(b, cfg, 5, 1);
+  assert.strictEqual(b.objects.filter(function (o) { return o.id === 'toilet'; }).length, 1);
+  assert.strictEqual(L.objectAt(b, cfg, 5, 1), 0);
 };
 
 var failed = 0;

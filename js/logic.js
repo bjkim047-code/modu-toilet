@@ -48,30 +48,52 @@ var ModuLogic = (function () {
     return out;
   }
 
-  // 칸마다 차지한 설비 번호 (-1은 빈 칸)
-  function occupancy(b, cfg, skip) {
+  // 높이 층: 'floor'(바닥 설비) 또는 'mid'(벽 가운데 단에 붙는 물건). 다른 층끼리는 겹칠 수 있음
+  function levelOf(cfg, o) { return itemById(cfg, o.id).level || 'floor'; }
+
+  // 칸마다 차지한 설비 번호 (-1은 빈 칸). level 층만 셈 (기본은 바닥)
+  function occupancy(b, cfg, skip, level) {
     var g = grid(b.cols, b.rows, -1);
+    level = level || 'floor';
     b.objects.forEach(function (o, i) {
-      if (i === skip) return;
+      if (i === skip || levelOf(cfg, o) !== level) return;
       cellsOf(cfg, o).forEach(function (c) { if (inside(b, c.x, c.y)) g[c.y][c.x] = i; });
     });
     return g;
   }
 
+  // 그 칸의 설비 번호. 벽에 붙은 물건(위층)을 먼저 찾고, 뒤쪽 벽 칸을 누르면 그 벽에 붙은 물건을 찾음
   function objectAt(b, cfg, x, y) {
     if (!inside(b, x, y)) return -1;
+    var mid = occupancy(b, cfg, -1, 'mid');
+    if (y === 0 && x > 0 && inside(b, x, 1) && mid[1][x] !== -1 && b.objects[mid[1][x]].rot === 0) return mid[1][x];
+    if (x === 0 && y > 0 && inside(b, 1, y) && mid[y][1] !== -1 && b.objects[mid[y][1]].rot === 3) return mid[y][1];
+    if (mid[y][x] !== -1) return mid[y][x];
     return occupancy(b, cfg)[y][x];
   }
 
+  // 벽 가운데 단 물건이 붙는 벽: 방향 0은 위쪽 벽(y=0), 3은 왼쪽 벽(x=0)
+  function onBackWall(o) { return o.rot === 0 ? o.y === 1 : o.rot === 3 ? o.x === 1 : false; }
+
   // 설비를 그 자리에 놓을 수 있는지
   function fits(b, cfg, o, skip) {
-    var occ = occupancy(b, cfg, skip);
+    var level = levelOf(cfg, o);
+    var occ = occupancy(b, cfg, skip, level);
     var cs = cellsOf(cfg, o);
     for (var i = 0; i < cs.length; i++) {
       if (!interior(b, cs[i].x, cs[i].y)) return { ok: false, msg: '화장실 안쪽에만 놓을 수 있어요.' };
-      if (occ[cs[i].y][cs[i].x] !== -1) return { ok: false, msg: '다른 설비와 겹쳐요.' };
+      if (occ[cs[i].y][cs[i].x] !== -1) return { ok: false, msg: level === 'mid' ? '같은 높이에 다른 물건이 있어요.' : '다른 설비와 겹쳐요.' };
     }
+    if (level === 'mid' && !onBackWall(o)) return { ok: false, msg: itemById(cfg, o.id).name + '은(는) 뒤쪽 벽 바로 옆 칸에만 붙일 수 있어요.' };
     return { ok: true };
+  }
+
+  // 벽 가운데 단 물건: 누른 칸에서 붙일 벽과 칸을 정함 (벽 칸을 눌러도 바로 옆 칸으로)
+  function snapToWall(o, cx, cy) {
+    if (cy <= 1 && cx >= 1) { o.x = cx; o.y = 1; o.rot = 0; return true; }
+    if (cx <= 1 && cy >= 1) { o.x = 1; o.y = cy; o.rot = 3; return true; }
+    o.x = cx; o.y = cy;
+    return false;
   }
 
   // 안쪽으로 밀어 넣기
@@ -81,15 +103,22 @@ var ModuLogic = (function () {
     o.y = Math.max(1, Math.min(b.rows - 1 - s.h, o.y));
   }
 
-  // (cx, cy)를 가운데로 하여 새 설비 놓기
-  function addObject(b, cfg, id, cx, cy, rot) {
+  // (cx, cy)를 가운데로 하여 놓일 설비 자리 (놓지는 않음)
+  function placement(b, cfg, id, cx, cy, rot) {
     var it = itemById(cfg, id);
-    if (!it || it.layer !== 'floor') return { ok: false };
     var o = { id: id, x: 0, y: 0, rot: it.rotatable === false ? 0 : (rot || 0) };
+    if (it.level === 'mid') { snapToWall(o, cx, cy); return o; }
     var s = sizeOf(cfg, o);
     o.x = cx - Math.floor((s.w - 1) / 2);
     o.y = cy - Math.floor((s.h - 1) / 2);
     clampIn(b, cfg, o);
+    return o;
+  }
+
+  function addObject(b, cfg, id, cx, cy, rot) {
+    var it = itemById(cfg, id);
+    if (!it || it.layer !== 'floor') return { ok: false };
+    var o = placement(b, cfg, id, cx, cy, rot);
     var f = fits(b, cfg, o, -1);
     if (!f.ok) return f;
     b.objects.push(o);
@@ -99,11 +128,13 @@ var ModuLogic = (function () {
   function moveObject(b, cfg, i, x, y) {
     var o = b.objects[i];
     var n = { id: o.id, x: x, y: y, rot: o.rot };
-    clampIn(b, cfg, n);
+    if (levelOf(cfg, o) === 'mid') { if (!snapToWall(n, x, y)) return { ok: false }; }
+    else clampIn(b, cfg, n);
+    if (n.x === o.x && n.y === o.y && n.rot === o.rot) return { ok: false };
     if (n.x === o.x && n.y === o.y) return { ok: false };
     var f = fits(b, cfg, n, i);
     if (!f.ok) return f;
-    o.x = n.x; o.y = n.y;
+    o.x = n.x; o.y = n.y; o.rot = n.rot;
     return { ok: true };
   }
 
@@ -119,6 +150,7 @@ var ModuLogic = (function () {
     n.x = o.x + ((s.w - ns.w) / 2 | 0); n.y = o.y + ((s.h - ns.h) / 2 | 0);
     clampIn(b, cfg, n);
     var f = fits(b, cfg, n, i);
+    if (!f.ok && levelOf(cfg, o) === 'mid') return { ok: false, msg: '벽 모서리 칸에서만 방향을 바꿀 수 있어요.' };
     if (!f.ok) return { ok: false, msg: '돌릴 자리가 없어요. 주변을 비워 주세요.' };
     b.objects[i] = n;
     return { ok: true };
@@ -297,7 +329,7 @@ var ModuLogic = (function () {
 
   return {
     createBoard: createBoard, itemById: itemById, isBorder: isBorder, isEntrance: isEntrance,
-    sizeOf: sizeOf, cellsOf: cellsOf, objectAt: objectAt, fits: fits,
+    sizeOf: sizeOf, cellsOf: cellsOf, objectAt: objectAt, fits: fits, levelOf: levelOf, placement: placement,
     addObject: addObject, moveObject: moveObject, rotateObject: rotateObject, removeObject: removeObject,
     eraseAt: eraseAt, paintTactile: paintTactile, placeWall: placeWall, evaluate: evaluate
   };
