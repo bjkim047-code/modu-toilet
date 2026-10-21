@@ -33,7 +33,7 @@
   }
   cfg.items.forEach(function (it) {
     tryImage('item:' + it.id, 'assets/items/' + it.id + '.png');
-    if (it.layer === 'floor') ['a', 'b'].forEach(function (d) { tryImage('iso:' + it.id + ':' + d, 'assets/items/' + it.id + '_iso_' + d + '.png'); });
+    if (it.layer === 'floor' || it.layer === 'wall') ['a', 'b'].forEach(function (d) { tryImage('iso:' + it.id + ':' + d, 'assets/items/' + it.id + '_iso_' + d + '.png'); });
   });
   ['floor', 'wall', 'entrance', 'tactile'].forEach(function (id) { tryImage('item:' + id, 'assets/items/' + id + '.png'); });
   cfg.visitors.forEach(function (v) {
@@ -437,12 +437,21 @@
     ctx.strokeStyle = 'rgba(0,0,0,0.18)'; ctx.lineWidth = 1; ctx.stroke();
     var id = state.board.wall[y][x];
     if (!id) return;
-    // 벽에 붙인 물건: 방 쪽을 향한 면 가운데에
-    var p;
+    // 벽에 붙인 물건: 뒤쪽 벽은 방 쪽을 향한 면 가운데에, 앞쪽 낮은 벽은 벽 위에 세워서
+    var p, onTop = false;
     if (back && y === 0 && x !== 0) { p = P(x + 0.5, y + 1, s); p.y -= z * 0.55; }
     else if (back && x === 0 && y !== 0) { p = P(x + 1, y + 0.5, s); p.y -= z * 0.55; }
-    else { p = P(x + 0.5, y + 0.5, s); p.y -= z + s * 0.3; }
-    drawWallItem(ctx, id, p.x - s * 0.3, p.y - s * 0.3, s * 0.6);
+    else { p = P(x + 0.5, y + 0.5, s); p.y -= z; onTop = true; }
+    // 방향별 그림: 가로로 뻗은 벽(위·아래 테두리)은 a, 세로로 뻗은 벽(왼쪽·오른쪽 테두리)은 b
+    var alongX = y === 0 || y === ROWS - 1;
+    var img = images['iso:' + id + ':' + (alongX ? 'a' : 'b')];
+    if (img) {
+      var iw = s * 0.75, ih = iw * img.height / img.width;
+      ctx.drawImage(img, p.x - iw / 2, onTop ? p.y - ih : p.y - ih / 2, iw, ih);
+    } else {
+      if (onTop) p.y -= s * 0.3;
+      drawWallItem(ctx, id, p.x - s * 0.3, p.y - s * 0.3, s * 0.6);
+    }
   }
 
   // 벽 가운데 단에 붙은 물건: 벽 면과 칸이 만나는 선에서 벽 높이의 절반만큼 올려 그림
