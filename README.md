@@ -53,7 +53,7 @@
   - 설비: `assets/items/<id>.png`. 기본 방향 기준 `가로칸×128` × `세로칸×128` px. 예: 변기 256×384px. 방향을 돌리면 그림도 함께 돌아갑니다.
   - 바닥·벽·입구·점자블록·점자 안내판·비상벨: `floor.png`, `wall.png`, `entrance.png`, `tactile.png`, `braille.png`, `bell.png` (128×128px)
   - 지금 들어 있는 그림: 변기, 손잡이, 휴지걸이, 비상벨
-  - 마름모 보기용 방향별 그림: `assets/items/<id>_iso_a.png`(왼쪽 아래를 보는 모습, 오른쪽 위 벽에 붙음)와 `<id>_iso_b.png`(오른쪽 아래를 보는 모습, 왼쪽 위 벽에 붙음). 있으면 마름모 보기에서 이 그림을 씁니다. 지금은 변기만 있습니다.
+  - 마름모 보기용 방향별 그림: `assets/items/<id>_iso_a.png`(왼쪽 아래를 보는 모습, 오른쪽 위 벽에 붙음)와 `<id>_iso_b.png`(오른쪽 아래를 보는 모습, 왼쪽 위 벽에 붙음). 있으면 마름모 보기에서 이 그림을 씁니다. 지금은 변기와 손잡이가 있습니다. a는 기본 방향, b는 한 번 돌린 방향의 칸 모양에 맞춰 그립니다.
   - 이용객: `assets/visitors/<id>_normal.png`, `<id>_happy.png`, `<id>_sad.png`
   - id 목록은 `js/config.js`에 있습니다. 배경이 투명한 PNG를 권장합니다.
 
