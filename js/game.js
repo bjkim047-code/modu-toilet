@@ -162,6 +162,29 @@
     c.restore();
   }
 
+  // ---------- 보기 방식: 'iso'(마름모) 또는 'flat'(네모) ----------
+  var VIEW_KEY = 'modu-toilet-view';
+  var WALL_H = 1.1;  // 마름모 보기에서 뒤쪽 벽 높이 (칸 너비 기준)
+  state.view = 'iso';
+  try { if (localStorage.getItem(VIEW_KEY) === 'flat') state.view = 'flat'; } catch (e) {}
+
+  // 보드 전체가 화면에서 차지하는 크기와, 그 안에서 (0,0) 칸 모서리의 위치 (모두 scale에 비례)
+  function layout(s) {
+    if (state.view === 'flat') return { w: COLS * s, h: ROWS * s, ax: 0, ay: 0 };
+    return { w: (COLS + ROWS) * s / 2, h: (COLS + ROWS) * s / 4 + WALL_H * s, ax: ROWS * s / 2, ay: WALL_H * s };
+  }
+  // 마름모 보기: 바닥 좌표 → 화면 좌표
+  function P(x, y, s) { return { x: (x - y) * s / 2, y: (x + y) * s / 4 }; }
+
+  function setView(v) {
+    state.view = v;
+    try { localStorage.setItem(VIEW_KEY, v); } catch (e) {}
+    $('btn-view').textContent = v === 'iso' ? '□' : '◇';
+    $('btn-view').title = v === 'iso' ? '네모 보기로 바꾸기' : '마름모 보기로 바꾸기';
+    state.cam.zoomed = false;
+    resize();
+  }
+
   // ---------- 화면 크기와 카메라 ----------
   var dpr = 1;
   var hintHidden = false;
@@ -170,8 +193,8 @@
     var r = wrap.getBoundingClientRect();
     canvas.width = Math.round(r.width * dpr);
     canvas.height = Math.round(r.height * dpr);
-    var prevFit = state.cam.fit;
-    state.cam.fit = Math.min(r.width / COLS, r.height / ROWS);
+    var prevFit = state.cam.fit, unit = layout(1);
+    state.cam.fit = Math.min(r.width / unit.w, r.height / unit.h);
     if (!state.cam.zoomed || !prevFit) fitView(); else clampCam();
     updateHint();
     state.dirty = true;
@@ -181,18 +204,17 @@
   }
   function fitView() {
     var r = wrap.getBoundingClientRect();
-    var s = state.cam.fit;
+    var s = state.cam.fit, lay = layout(s);
     state.cam.scale = s;
-    state.cam.ox = (r.width - s * COLS) / 2;
-    state.cam.oy = (r.height - s * ROWS) / 2;
+    state.cam.ox = (r.width - lay.w) / 2;
+    state.cam.oy = (r.height - lay.h) / 2;
     state.cam.zoomed = false;
     state.dirty = true;
   }
   function clampCam() {
-    var r = wrap.getBoundingClientRect(), cam = state.cam;
-    var w = cam.scale * COLS, h = cam.scale * ROWS;
-    cam.ox = w <= r.width ? (r.width - w) / 2 : Math.min(0, Math.max(r.width - w, cam.ox));
-    cam.oy = h <= r.height ? (r.height - h) / 2 : Math.min(0, Math.max(r.height - h, cam.oy));
+    var r = wrap.getBoundingClientRect(), cam = state.cam, lay = layout(cam.scale);
+    cam.ox = lay.w <= r.width ? (r.width - lay.w) / 2 : Math.min(0, Math.max(r.width - lay.w, cam.ox));
+    cam.oy = lay.h <= r.height ? (r.height - lay.h) / 2 : Math.min(0, Math.max(r.height - lay.h, cam.oy));
   }
   function zoomAt(factor, px, py) {
     var cam = state.cam;
@@ -204,22 +226,43 @@
     clampCam();
     state.dirty = true;
   }
+  function rawCell(px, py) {
+    var cam = state.cam, s = cam.scale, lay = layout(s);
+    var lx = px - cam.ox - lay.ax, ly = py - cam.oy - lay.ay;
+    if (state.view === 'flat') return { x: Math.floor(lx / s), y: Math.floor(ly / s) };
+    var u = lx / (s / 2), v = ly / (s / 4);
+    return { x: Math.floor((u + v) / 2), y: Math.floor((v - u) / 2) };
+  }
   function toCell(px, py) {
-    var cam = state.cam;
-    var x = Math.floor((px - cam.ox) / cam.scale), y = Math.floor((py - cam.oy) / cam.scale);
-    if (x < 0 || y < 0 || x >= COLS || y >= ROWS) return null;
-    return { x: x, y: y };
+    var c = rawCell(px, py);
+    var ok = function (c) { return c.x >= 0 && c.y >= 0 && c.x < COLS && c.y < ROWS; };
+    if (ok(c)) return c;
+    // 마름모 보기: 뒤쪽 벽의 세워진 면을 누르면 그 벽 칸으로
+    if (state.view === 'iso') {
+      var s = state.cam.scale;
+      for (var d = s / 8; d <= WALL_H * s; d += s / 8) {
+        var w = rawCell(px, py + d);
+        if (ok(w) && (w.x === 0 || w.y === 0)) return w;
+      }
+    }
+    return null;
   }
 
   // ---------- 보드 그리기 ----------
   function draw() {
-    var cam = state.cam, s = cam.scale, b = state.board;
+    var cam = state.cam, s = cam.scale, lay = layout(s);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.imageSmoothingQuality = 'high';
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.save();
-    ctx.translate(cam.ox, cam.oy);
-    var x, y;
+    state.tx = cam.ox + lay.ax; state.ty = cam.oy + lay.ay;
+    ctx.translate(state.tx, state.ty);
+    if (state.view === 'iso') drawIso(s); else drawFlat(s);
+    ctx.restore();
+  }
+
+  function drawFlat(s) {
+    var b = state.board, x, y;
     for (y = 0; y < ROWS; y++) for (x = 0; x < COLS; x++) {
       var px = x * s, py = y * s;
       if (L.isEntrance(cfg, x, y)) {
@@ -251,25 +294,186 @@
     }
     // 놓을 자리 미리보기 (마우스)
     if (state.hover && !state.run && !state.pan) drawGhost(s);
-    if (state.run) drawRun(s);
-    ctx.restore();
+    if (state.run) {
+      var rv = runVisitor();
+      if (rv) {
+        var px = rv.wx * s, py = rv.wy * s, size = s * Math.max(1.8, rv.r.size * 0.95);
+        drawVisitor(rv.v, px, py, size, rv.face);
+        if (rv.arrived) drawBubble(rv.r.reason, px, py - size * 0.2, s, rv.r.ok);
+      }
+    }
+  }
+
+  // 마우스를 올린 자리에 놓일 설비 (놓을 수 없는 칸이면 null)
+  function ghostObject() {
+    var it = L.itemById(cfg, state.tool), h = state.hover;
+    if (it.layer !== 'floor' || L.objectAt(state.board, cfg, h.x, h.y) !== -1) return null;
+    var o = { id: it.id, x: 0, y: 0, rot: 0 };
+    var sz = L.sizeOf(cfg, o);
+    o.x = Math.max(1, Math.min(COLS - 1 - sz.w, h.x - Math.floor((sz.w - 1) / 2)));
+    o.y = Math.max(1, Math.min(ROWS - 1 - sz.h, h.y - Math.floor((sz.h - 1) / 2)));
+    o.ok = L.fits(state.board, cfg, o, -1).ok;
+    return o;
   }
 
   function drawGhost(s) {
-    var it = L.itemById(cfg, state.tool), h = state.hover;
-    if (it.layer === 'floor' && L.objectAt(state.board, cfg, h.x, h.y) === -1) {
-      var o = { id: it.id, x: 0, y: 0, rot: 0 };
+    var o = ghostObject(), h = state.hover;
+    if (o) {
       var sz = L.sizeOf(cfg, o);
-      o.x = Math.max(1, Math.min(COLS - 1 - sz.w, h.x - Math.floor((sz.w - 1) / 2)));
-      o.y = Math.max(1, Math.min(ROWS - 1 - sz.h, h.y - Math.floor((sz.h - 1) / 2)));
-      var ok = L.fits(state.board, cfg, o, -1).ok;
-      drawObject(ctx, o.id, 0, o.x * s, o.y * s, s, ok ? 0.55 : 0.25);
-      ctx.strokeStyle = ok ? '#24855a' : '#c2453a'; ctx.lineWidth = 2;
+      drawObject(ctx, o.id, 0, o.x * s, o.y * s, s, o.ok ? 0.55 : 0.25);
+      ctx.strokeStyle = o.ok ? '#24855a' : '#c2453a'; ctx.lineWidth = 2;
       ctx.strokeRect(o.x * s + 1, o.y * s + 1, sz.w * s - 2, sz.h * s - 2);
     } else {
       ctx.strokeStyle = '#1d5fb8'; ctx.lineWidth = 2;
       ctx.strokeRect(h.x * s + 1, h.y * s + 1, s - 2, s - 2);
     }
+  }
+
+  // ---------- 마름모(아이소메트릭) 보기 ----------
+  // 설비 높이 (칸 너비 기준). 임시 상자와 그림 크기에 씀
+  var ISO_H = { toilet: 0.9, sink: 1.0, sinkLow: 0.7, diaper: 1.0, babySeat: 0.7, ostomy: 1.0, grabBar: 0.8, paperHolder: 0.6 };
+
+  function shade(hex, k) {
+    var n = parseInt(hex.slice(1), 16), r = n >> 16, g = (n >> 8) & 255, b = n & 255;
+    return 'rgb(' + Math.round(r * k) + ',' + Math.round(g * k) + ',' + Math.round(b * k) + ')';
+  }
+
+  function polygon(pts, dz) {
+    ctx.beginPath();
+    pts.forEach(function (p, i) { if (i) ctx.lineTo(p.x, p.y - (dz || 0)); else ctx.moveTo(p.x, p.y - (dz || 0)); });
+    ctx.closePath();
+  }
+
+  // 바닥 (x, y)부터 w×h칸 상자의 네 모서리: 위, 오른쪽, 아래, 왼쪽
+  function corners(x, y, w, h, s) { return [P(x, y, s), P(x + w, y, s), P(x + w, y + h, s), P(x, y + h, s)]; }
+
+  function isoBox(x, y, w, h, z, color, s, alpha) {
+    var c = corners(x, y, w, h, s);
+    ctx.save();
+    if (alpha !== undefined) ctx.globalAlpha = alpha;
+    // 왼쪽 앞면
+    ctx.beginPath(); ctx.moveTo(c[3].x, c[3].y); ctx.lineTo(c[2].x, c[2].y); ctx.lineTo(c[2].x, c[2].y - z); ctx.lineTo(c[3].x, c[3].y - z); ctx.closePath();
+    ctx.fillStyle = shade(color, 0.78); ctx.fill();
+    // 오른쪽 앞면
+    ctx.beginPath(); ctx.moveTo(c[2].x, c[2].y); ctx.lineTo(c[1].x, c[1].y); ctx.lineTo(c[1].x, c[1].y - z); ctx.lineTo(c[2].x, c[2].y - z); ctx.closePath();
+    ctx.fillStyle = shade(color, 0.64); ctx.fill();
+    // 윗면
+    polygon(c, z); ctx.fillStyle = color; ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,0.25)'; ctx.lineWidth = 1; ctx.stroke();
+    ctx.restore();
+    return c;
+  }
+
+  function drawIsoFloor(x, y, s) {
+    var b = state.board, c = corners(x, y, 1, 1, s);
+    polygon(c);
+    if (L.isEntrance(cfg, x, y)) ctx.fillStyle = C.entrance;
+    else ctx.fillStyle = C.floor;
+    ctx.fill();
+    ctx.strokeStyle = C.floorLine; ctx.lineWidth = 1; ctx.stroke();
+    if (b.tactile[y][x]) {
+      var i = corners(x + 0.06, y + 0.06, 0.88, 0.88, s);
+      polygon(i); ctx.fillStyle = C.tactile; ctx.fill();
+      ctx.fillStyle = C.tactileDot;
+      for (var a = 0; a < 3; a++) for (var d = 0; d < 3; d++) {
+        var p = P(x + 0.2 + a * 0.3, y + 0.2 + d * 0.3, s);
+        ctx.beginPath(); ctx.ellipse(p.x, p.y, s * 0.05, s * 0.025, 0, 0, 7); ctx.fill();
+      }
+    }
+  }
+
+  // 벽 칸: 뒤쪽(위·왼쪽 테두리)은 높게, 앞쪽은 낮게
+  function drawIsoWall(x, y, s) {
+    var back = x === 0 || y === 0;
+    var z = (back ? WALL_H : 0.22) * s;
+    isoBox(x, y, 1, 1, z, back ? '#5a6273' : '#4a5160', s);
+    var id = state.board.wall[y][x];
+    if (!id) return;
+    // 벽에 붙인 물건: 방 쪽을 향한 면 가운데에
+    var p;
+    if (back && y === 0 && x !== 0) { p = P(x + 0.5, y + 1, s); p.y -= z * 0.55; }
+    else if (back && x === 0 && y !== 0) { p = P(x + 1, y + 0.5, s); p.y -= z * 0.55; }
+    else { p = P(x + 0.5, y + 0.5, s); p.y -= z + s * 0.3; }
+    drawWallItem(ctx, id, p.x - s * 0.3, p.y - s * 0.3, s * 0.6);
+  }
+
+  function drawIsoObject(o, s, alpha) {
+    var it = L.itemById(cfg, o.id), sz = L.sizeOf(cfg, o);
+    var z = (ISO_H[o.id] || 0.8) * s;
+    var c = corners(o.x, o.y, sz.w, sz.h, s);
+    var img = images['item:' + o.id];
+    ctx.save();
+    if (alpha !== undefined) ctx.globalAlpha = alpha;
+    if (img) {
+      // 그림은 세워서 그리고, 옆으로 돌린 방향(1, 3)은 좌우를 뒤집음
+      polygon(c); ctx.fillStyle = 'rgba(0,0,0,0.12)'; ctx.fill();
+      var maxW = c[1].x - c[3].x, maxH = (c[2].y - c[0].y) + z * 1.3;
+      var k = Math.min(maxW / img.width, maxH / img.height);
+      var iw = img.width * k, ih = img.height * k, cx = (c[1].x + c[3].x) / 2;
+      ctx.translate(cx, c[2].y);
+      if (o.rot % 2) ctx.scale(-1, 1);
+      ctx.drawImage(img, -iw / 2, -ih, iw, ih);
+    } else if (o.id === 'grabBar') {
+      var a = P(o.x + (sz.w > sz.h ? 0.2 : 0.5), o.y + (sz.w > sz.h ? 0.5 : 0.2), s);
+      var e = P(o.x + (sz.w > sz.h ? sz.w - 0.2 : 0.5), o.y + (sz.w > sz.h ? 0.5 : sz.h - 0.2), s);
+      ctx.strokeStyle = it.color; ctx.lineWidth = s * 0.16; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(a.x, a.y - z * 0.6); ctx.lineTo(e.x, e.y - z * 0.6); ctx.stroke();
+    } else {
+      isoBox(o.x, o.y, sz.w, sz.h, z, it.color || '#ffffff', s);
+      // 벽에 붙는 쪽 표시
+      var edge = [[0, 1], [1, 2], [2, 3], [3, 0]][o.rot];
+      ctx.strokeStyle = 'rgba(40,52,70,0.6)'; ctx.lineWidth = Math.max(2, s * 0.12);
+      ctx.beginPath(); ctx.moveTo(c[edge[0]].x, c[edge[0]].y - z); ctx.lineTo(c[edge[1]].x, c[edge[1]].y - z); ctx.stroke();
+      var top = P(o.x + sz.w / 2, o.y + sz.h / 2, s);
+      drawEmoji(ctx, it.emoji, top.x, top.y - z - s * 0.15, Math.min(sz.w, sz.h) * s * 0.45);
+    }
+    ctx.restore();
+  }
+
+  function drawIso(s) {
+    var b = state.board, x, y, items = [];
+    for (y = 0; y < ROWS; y++) for (x = 0; x < COLS; x++) {
+      if (L.isEntrance(cfg, x, y) || !L.isBorder(b, x, y)) drawIsoFloor(x, y, s);
+      else items.push({ d: x + y, draw: drawIsoWall.bind(null, x, y, s) });
+    }
+    // 입구 글자
+    var e = cfg.entrance, ep = P((e[0].x + e[e.length - 1].x + 1) / 2, e[0].y + 0.5, s);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '400 ' + Math.round(s * 0.5) + 'px ' + getComputedStyle(document.documentElement).getPropertyValue('--display');
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('입구', ep.x, ep.y);
+
+    // 선택한 설비, 놓을 자리는 바닥에 먼저 표시
+    if (state.selected !== -1 && b.objects[state.selected]) {
+      var so = b.objects[state.selected], sz = L.sizeOf(cfg, so);
+      polygon(corners(so.x, so.y, sz.w, sz.h, s));
+      ctx.fillStyle = 'rgba(29,95,184,0.18)'; ctx.fill();
+      ctx.strokeStyle = '#1d5fb8'; ctx.lineWidth = 3; ctx.setLineDash([6, 4]); ctx.stroke(); ctx.setLineDash([]);
+    }
+    var ghost = null;
+    if (state.hover && !state.run && !state.pan) {
+      ghost = ghostObject();
+      var gc = ghost ? corners(ghost.x, ghost.y, L.sizeOf(cfg, ghost).w, L.sizeOf(cfg, ghost).h, s) : corners(state.hover.x, state.hover.y, 1, 1, s);
+      polygon(gc);
+      ctx.strokeStyle = ghost ? (ghost.ok ? '#24855a' : '#c2453a') : '#1d5fb8'; ctx.lineWidth = 2; ctx.stroke();
+    }
+
+    // 뒤에 있는 것부터 그림
+    b.objects.forEach(function (o) {
+      var sz = L.sizeOf(cfg, o);
+      items.push({ d: o.x + o.y + (sz.w + sz.h) / 2, draw: drawIsoObject.bind(null, o, s, undefined) });
+    });
+    if (ghost && ghost.ok) items.push({ d: 999, draw: drawIsoObject.bind(null, ghost, s, 0.5) });
+    var rv = state.run ? runVisitor() : null;
+    var vp = null, vsize = s * (rv && rv.r.size === 3 ? 1.9 : 1.4);
+    if (rv) {
+      vp = P(rv.wx, rv.wy, s);
+      vp.y -= vsize * 0.45;
+      items.push({ d: rv.wx + rv.wy, draw: function () { drawVisitor(rv.v, vp.x, vp.y, vsize, rv.face); } });
+    }
+    items.sort(function (a, c) { return a.d - c.d; });
+    items.forEach(function (it) { it.draw(); });
+    if (rv && rv.arrived) drawBubble(rv.r.reason, vp.x, vp.y - vsize * 0.2, s, rv.r.ok);
   }
 
   function visitorById(id) {
@@ -305,9 +509,9 @@
     lines.forEach(function (l) { w = Math.max(w, ctx.measureText(l).width); });
     var pad = fs * 0.6, lh = fs * 1.3;
     var bw = w + pad * 2, bh = lines.length * lh + pad * 1.4;
-    var bx = Math.max(-state.cam.ox + 4, Math.min(px - bw / 2, -state.cam.ox + wrap.clientWidth - bw - 4));
+    var bx = Math.max(-state.tx + 4, Math.min(px - bw / 2, -state.tx + wrap.clientWidth - bw - 4));
     var by = py - bh - s;
-    if (by < -state.cam.oy + 4) by = py + s;
+    if (by < -state.ty + 4) by = py + s;
     ctx.fillStyle = '#ffffff';
     ctx.strokeStyle = ok ? '#24855a' : '#c2453a'; ctx.lineWidth = 2;
     roundRect(ctx, bx, by, bw, bh, fs * 0.5); ctx.fill(); ctx.stroke();
@@ -354,20 +558,19 @@
     state.dirty = true;
   }
 
-  function drawRun(s) {
+  // 지금 걷고 있는 이용객의 바닥 위치 (칸 단위)
+  function runVisitor() {
     var run = state.run, r = run.list[run.idx];
-    if (!r) return;
-    var v = visitorById(r.id);
+    if (!r) return null;
     var walkTime = (r.path.length - 1) * STEP;
     var f = Math.min(run.t, walkTime) / STEP;
     var i = Math.min(Math.floor(f), r.path.length - 1), k = f - i;
     var a = r.path[i], b2 = r.path[Math.min(i + 1, r.path.length - 1)];
-    var off = r.size / 2;
-    var px = (a.x + (b2.x - a.x) * k + off) * s, py = (a.y + (b2.y - a.y) * k + off) * s;
-    var arrived = run.t >= walkTime;
-    var size = s * Math.max(1.8, r.size * 0.95);
-    drawVisitor(v, px, py, size, arrived ? (r.ok ? 'happy' : 'sad') : 'normal');
-    if (arrived) drawBubble(r.reason, px, py - size * 0.2, s, r.ok);
+    var off = r.size / 2, arrived = run.t >= walkTime;
+    return {
+      r: r, v: visitorById(r.id), arrived: arrived, face: arrived ? (r.ok ? 'happy' : 'sad') : 'normal',
+      wx: a.x + (b2.x - a.x) * k + off, wy: a.y + (b2.y - a.y) * k + off
+    };
   }
 
   function finishRun() {
@@ -670,6 +873,7 @@
   $('btn-zoom-in').addEventListener('click', function () { zoomCenter(1.3); });
   $('btn-zoom-out').addEventListener('click', function () { zoomCenter(1 / 1.3); });
   $('btn-fit').addEventListener('click', fitView);
+  $('btn-view').addEventListener('click', function () { setView(state.view === 'iso' ? 'flat' : 'iso'); });
 
   // ---------- 버튼 ----------
   $('btn-test').addEventListener('click', startTest);
@@ -697,7 +901,7 @@
 
   renderPalette();
   renderVisitors();
-  resize();
+  setView(state.view);
   canvas.style.cursor = 'crosshair';
   showInfo('빈 화장실이에요. 이용객은 오른쪽 아래 <b>입구</b>로 들어와요. 설비를 골라 보드를 눌러 놓고 <b>▶ 테스트하기</b>를 눌러 보세요.');
   requestAnimationFrame(loop);

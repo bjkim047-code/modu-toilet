@@ -134,8 +134,8 @@ body {
 }
 #board { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; display: block; }
 .zoom {
-  position: absolute; left: 8px; bottom: 8px;
-  display: flex; gap: 4px;
+  position: absolute; left: 8px; top: 8px;
+  display: flex; flex-direction: column; gap: 4px;
 }
 .zbtn {
   width: 34px; height: 34px; border-radius: 8px;
@@ -144,7 +144,7 @@ body {
 }
 .zbtn[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
 .rotate-hint {
-  position: absolute; left: 8px; right: 8px; top: 8px;
+  position: absolute; left: 8px; right: 8px; bottom: 8px;
   background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
   padding: 8px 10px; font-size: 13px; display: flex; justify-content: space-between; gap: 8px;
 }
