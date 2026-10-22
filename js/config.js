@@ -76,8 +76,8 @@ var MODU_CONFIG = {
     { id: 'wheelchair', name: '휠체어 이용자', emoji: '🧑‍🦽', color: '#3d7dd8',
       needs: ['입구에서 변기 옆까지 3칸 폭의 길', '휠체어가 돌 수 있는 6×6칸 빈 공간', '변기 바로 옆 손잡이', '낮은 세면대'],
       happy: '혼자서도 편하게 이용했어요!' },
-    // scale: 캐릭터 그림 크기 배율 (기본 1)
-    { id: 'family', name: '아이와 함께 온 보호자', emoji: '👩‍👧', color: '#e07a2f', scale: 1.3,
+    // scale: 캐릭터 그림 크기 배율 (기본 1). 1.36이면 휠체어 이용자 그림과 같은 높이
+    { id: 'family', name: '아이와 함께 온 보호자', emoji: '👩‍👧', color: '#e07a2f', scale: 1.36,
       needs: ['변기', '아동용 변기', '유아 의자나 기저귀 교환대', '아이 손이 닿는 낮은 세면대'],
       happy: '아이와 함께 들어갈 수 있어서 좋아요!' },
     { id: 'trans', name: '트랜스젠더·논바이너리 이용자', emoji: '🧑', color: '#c2569b',
