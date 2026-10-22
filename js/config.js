@@ -80,7 +80,7 @@ var MODU_CONFIG = {
     { id: 'family', name: '아이와 함께 온 보호자', emoji: '👩‍👧', color: '#e07a2f', scale: 1.36,
       needs: ['변기', '아동용 변기', '유아 의자나 기저귀 교환대', '아이 손이 닿는 낮은 세면대'],
       happy: '아이와 함께 들어갈 수 있어서 좋아요!' },
-    { id: 'trans', name: '트랜스젠더·논바이너리 이용자', emoji: '🧑', color: '#c2569b',
+    { id: 'trans', name: '트랜스젠더·논바이너리 이용자', emoji: '🧑', color: '#c2569b', scale: 1.36,
       needs: ['성별을 묻지 않는 1인 공간 (모두의 화장실이면 충분해요)', '변기', '세면대'],
       happy: '성별을 묻지 않으니 눈치 보지 않고 이용했어요!' },
     { id: 'ostomy', name: '장루·요루 이용자', emoji: '🙂', color: '#2f9e7a',
