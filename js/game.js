@@ -619,6 +619,9 @@
     if (rv) {
       vp = P(rv.wx, rv.wy, s);
       vp.y -= vsize * 0.45;
+      // 폭죽 위치용: 화면(페이지) 좌표로 기억
+      var cr = canvas.getBoundingClientRect();
+      state.visitorScreen = { x: cr.left + state.tx + vp.x, y: cr.top + state.ty + headTop(rv.v, vp.y, vsize) };
       items.push({ d: rv.wx + rv.wy, draw: function () { drawVisitor(rv.v, vp.x, vp.y, vsize, rv.face); } });
     }
     items.sort(function (a, c) { return a.d - c.d; });
@@ -714,7 +717,14 @@
   function stepRun(dt) {
     var run = state.run, r = run.list[run.idx];
     run.t += dt;
+    // 성공한 이용객이 입구에 도착하면 머리 위에서 작은 폭죽
+    var walkEnd = (r.path.length - 1) * STEP;
+    if (r.ok && !run.popped && run.t >= walkEnd && state.visitorScreen) {
+      run.popped = true;
+      firework(state.visitorScreen.x, state.visitorScreen.y - 20, 70);
+    }
     if (run.t >= (r.path.length - 1) * STEP + REACT) {
+      run.popped = false;
       state.results[r.id] = r;
       run.idx++;
       run.t = 0;
@@ -722,6 +732,43 @@
       if (run.idx >= run.list.length) finishRun();
     }
     state.dirty = true;
+  }
+
+  // ---------- 폭죽 (그림 없이 점으로 그림) ----------
+  var fx = document.getElementById('fx'), fctx = fx.getContext('2d'), sparks = [], fxRunning = false;
+  var FX_COLORS = ['#e4403a', '#f39a2b', '#f2cf3a', '#3fa66b', '#3b7fd6', '#8a55c9', '#ffffff'];
+  function firework(x, y, n) {
+    if (reduceMotion) n = Math.min(n, 12);
+    for (var i = 0; i < n; i++) {
+      var a = Math.random() * Math.PI * 2, sp = 2 + Math.random() * 4;
+      sparks.push({ x: x, y: y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 1.5, life: 1,
+        decay: 0.012 + Math.random() * 0.012, r: 2 + Math.random() * 2.5,
+        c: FX_COLORS[(Math.random() * FX_COLORS.length) | 0], sq: Math.random() < 0.5 });
+    }
+    if (!fxRunning) { fxRunning = true; requestAnimationFrame(fxLoop); }
+  }
+  // 도전하기 전원 성공: 화면 곳곳에서 여러 번 터짐
+  function celebrate() {
+    var w = window.innerWidth, h = window.innerHeight, shots = reduceMotion ? 2 : 7;
+    for (var i = 0; i < shots; i++) (function (i) {
+      setTimeout(function () { firework(w * (0.15 + Math.random() * 0.7), h * (0.15 + Math.random() * 0.35), 70); }, i * 280);
+    })(i);
+  }
+  function fxLoop() {
+    var d = window.devicePixelRatio || 1;
+    if (fx.width !== Math.round(innerWidth * d)) { fx.width = Math.round(innerWidth * d); fx.height = Math.round(innerHeight * d); }
+    fctx.setTransform(d, 0, 0, d, 0, 0);
+    fctx.clearRect(0, 0, innerWidth, innerHeight);
+    sparks = sparks.filter(function (p) { return p.life > 0; });
+    sparks.forEach(function (p) {
+      p.x += p.vx; p.y += p.vy; p.vy += 0.09; p.vx *= 0.985; p.life -= p.decay;
+      fctx.globalAlpha = Math.max(0, p.life);
+      fctx.fillStyle = p.c;
+      if (p.sq) fctx.fillRect(p.x - p.r, p.y - p.r, p.r * 2, p.r * 2);
+      else { fctx.beginPath(); fctx.arc(p.x, p.y, p.r, 0, 7); fctx.fill(); }
+    });
+    fctx.globalAlpha = 1;
+    if (sparks.length) requestAnimationFrame(fxLoop); else { fxRunning = false; fctx.clearRect(0, 0, innerWidth, innerHeight); }
   }
 
   // 지금 걷고 있는 이용객의 바닥 위치 (칸 단위)
@@ -769,6 +816,7 @@
 
   function showResult(list) {
     var fails = list.filter(function (r) { return !r.ok; }).length;
+    if (fails === 0) celebrate();
     $('result-title').textContent = fails === 0
       ? '🎉 모두가 이용할 수 있는 화장실이에요!'
       : fails + '명이 아직 이용하지 못했어요';
