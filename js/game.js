@@ -45,8 +45,40 @@
   });
 
   // ---------- 저장 ----------
-  function save() {
-    try { localStorage.setItem(SAVE_KEY, JSON.stringify(state.board)); } catch (e) {}
+  // 바뀔 때마다 이전 판을 쌓아 두어 되돌리기·다시하기에 씀
+  var history = { undo: [], redo: [], last: null, max: 100 };
+  function save(fromHistory) {
+    var now = JSON.stringify(state.board);
+    if (!fromHistory && history.last !== null && now !== history.last) {
+      history.undo.push(history.last);
+      if (history.undo.length > history.max) history.undo.shift();
+      history.redo = [];
+    }
+    history.last = now;
+    updateUndoButtons();
+    try { localStorage.setItem(SAVE_KEY, now); } catch (e) {}
+  }
+  function restore(json) {
+    state.board = JSON.parse(json);
+    select(-1); changed(); save(true);
+  }
+  function undo() {
+    if (state.run || !history.undo.length) return;
+    history.redo.push(history.last);
+    restore(history.undo.pop());
+    showInfo('<b>↶ 되돌리기</b> · 한 단계 전으로 돌아갔어요.');
+  }
+  function redo() {
+    if (state.run || !history.redo.length) return;
+    history.undo.push(history.last);
+    restore(history.redo.pop());
+    showInfo('<b>↷ 다시하기</b> · 되돌린 것을 다시 했어요.');
+  }
+  function updateUndoButtons() {
+    var u = document.getElementById('btn-undo'), r = document.getElementById('btn-redo');
+    if (!u || !r) return;
+    u.disabled = !!state.run || !history.undo.length;
+    r.disabled = !!state.run || !history.redo.length;
   }
   function load() {
     try {
@@ -668,6 +700,7 @@
     var skipBtn = mode === 'single' ? 'btn-test' : 'btn-challenge';
     $(skipBtn).textContent = '⏭ 건너뛰기';
     ['btn-test', 'btn-challenge', 'btn-reset'].forEach(function (id) { if (id !== skipBtn) $(id).disabled = true; });
+    updateUndoButtons();
     showInfo('<span class="muted">' + (mode === 'single' ? esc(visitorById(onlyId).name) + '이(가) 화장실을 이용해요…' : '이용객이 한 명씩 들어와요…') + '</span>');
   }
   function startTest() { startRun('single', state.picked); }
@@ -722,6 +755,7 @@
     $('btn-test').textContent = '▶ 테스트하기';
     $('btn-challenge').textContent = '🏁 도전하기';
     ['btn-test', 'btn-challenge', 'btn-reset'].forEach(function (id) { $(id).disabled = false; });
+    updateUndoButtons();
     renderVisitors();
     if (run.mode === 'single') showVisitor(visitorById(run.list[0].id));
     else showResult(run.list);
@@ -1096,6 +1130,14 @@
   // ---------- 버튼 ----------
   $('btn-test').addEventListener('click', startTest);
   $('btn-challenge').addEventListener('click', startChallenge);
+  $('btn-undo').addEventListener('click', undo);
+  $('btn-redo').addEventListener('click', redo);
+  document.addEventListener('keydown', function (e) {
+    if (!(e.ctrlKey || e.metaKey)) return;
+    var k = e.key.toLowerCase();
+    if (k === 'z' && !e.shiftKey) { e.preventDefault(); undo(); }
+    else if (k === 'y' || (k === 'z' && e.shiftKey)) { e.preventDefault(); redo(); }
+  });
   $('btn-reset').addEventListener('click', function () {
     ask('보드를 비우고 처음부터 꾸밀까요?', function () {
       state.board = L.createBoard(cfg); select(-1); changed(); save();
@@ -1130,6 +1172,8 @@
 
   renderPalette();
   renderVisitors();
+  history.last = JSON.stringify(state.board);  // 시작 판 (되돌리기의 출발점)
+  updateUndoButtons();
   setView(state.view);
   canvas.style.cursor = 'crosshair';
   showInfo('빈 화장실이에요. 이용객은 오른쪽 아래 <b>입구</b>로 들어와요. 설비를 골라 보드에 놓고, 위쪽 이용객을 고르고 <b>▶ 테스트하기</b>로 한 명씩, <b>🏁 도전하기</b>로 모두를 시험해 보세요.');
