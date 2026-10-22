@@ -39,6 +39,7 @@ body {
   -webkit-user-select: none;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;  /* 두 번 탭해서 페이지가 확대되지 않게 */
 }
 
 .app {

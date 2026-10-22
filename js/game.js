@@ -1109,7 +1109,10 @@
   canvas.addEventListener('wheel', function (e) {
     e.preventDefault();
     var p = local(e);
-    zoomAt(e.deltaY < 0 ? 1.15 : 1 / 1.15, p.x, p.y);
+    // 스크롤 양에 비례해 부드럽게 확대 (터치패드에서 갑자기 크게 확대되지 않게). ctrl+휠은 터치패드 핀치
+    var dy = e.deltaY * (e.deltaMode === 1 ? 16 : 1);
+    var f = Math.exp(-Math.max(-60, Math.min(60, dy)) * (e.ctrlKey ? 0.01 : 0.002));
+    zoomAt(f, p.x, p.y);
   }, { passive: false });
 
   function setPan(on) {
@@ -1126,6 +1129,31 @@
   $('btn-zoom-in').addEventListener('click', function () { zoomCenter(1.3); });
   $('btn-zoom-out').addEventListener('click', function () { zoomCenter(1 / 1.3); });
   $('btn-fit').addEventListener('click', fitView);
+
+  // 전체 화면: 페이지 전체를 화면 가득. 지원하지 않는 기기에서는 안내만
+  function fsElement() { return document.fullscreenElement || document.webkitFullscreenElement; }
+  function updateFullButton() {
+    var on = !!fsElement();
+    $('btn-full').textContent = on ? '🗗' : '⛶';
+    $('btn-full').title = on ? '전체 화면 끝내기' : '전체 화면';
+  }
+  $('btn-full').addEventListener('click', function () {
+    var el = document.documentElement;
+    try {
+      if (fsElement()) (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+      else {
+        var req = el.requestFullscreen || el.webkitRequestFullscreen;
+        if (!req) { showInfo('<span class="warn">이 기기·브라우저는 전체 화면을 지원하지 않아요.</span> 휴대폰은 가로로 돌리면 더 크게 보여요.'); return; }
+        var r = req.call(el);
+        if (r && r.catch) r.catch(function () { showInfo('<span class="warn">전체 화면으로 바꿀 수 없어요.</span> 브라우저에서 직접 열어 보세요.'); });
+      }
+    } catch (e) { showInfo('<span class="warn">전체 화면으로 바꿀 수 없어요.</span>'); }
+  });
+  ['fullscreenchange', 'webkitfullscreenchange'].forEach(function (ev) {
+    document.addEventListener(ev, function () { updateFullButton(); state.cam.zoomed = false; setTimeout(resize, 50); });
+  });
+  // iOS 사파리의 두 손가락 페이지 확대 막기 (보드 안 확대는 따로 처리)
+  document.addEventListener('gesturestart', function (e) { e.preventDefault(); });
 
   // ---------- 버튼 ----------
   $('btn-test').addEventListener('click', startTest);
