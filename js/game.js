@@ -533,7 +533,7 @@
     var z = (ISO_H[o.id] || 0.8) * s;
     var c = corners(o.x, o.y, sz.w, sz.h, s);
     // 방향별 그림: 방향 0, 2는 a(왼쪽 아래를 봄), 1, 3은 b(오른쪽 아래를 봄)
-    var dirImg = images['iso:' + o.id + ':' + (o.rot % 2 ? 'b' : 'a')];
+    var dirImg = images['iso:' + o.id + ':' + 'adcb'[o.rot % 4]] || images['iso:' + o.id + ':' + (o.rot % 2 ? 'b' : 'a')];
     var img = dirImg || images['item:' + o.id];
     ctx.save();
     if (alpha !== undefined) ctx.globalAlpha = alpha;

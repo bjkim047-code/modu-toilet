@@ -48,11 +48,11 @@ var MODU_CONFIG = {
       desc: '벽 아래 단에 거는 낮은 세면대예요. 앉은 채로 손이 닿고, 아래가 비어 있어 휠체어 무릎이 들어가요. 어린이도 편해요.' },
     { id: 'diaper', name: '기저귀 교환대', layer: 'floor', mount: true, bands: [2], group: '설비', w: 3, h: 2, rotations: [0, 3, 2, 1], anchor: 'center', isoW: 2.3, emoji: '👶', color: '#fde9cf',
       desc: '벽에 거는 접이식 교환대예요. 네 벽 어디든(입구 앞 제외) 바로 옆에 가운데 높이로 붙어요. 아이를 돌보는 보호자는 성별과 상관없이 필요해요.' },
-    { id: 'babySeat', name: '유아 의자', layer: 'floor', mount: true, bands: [2], group: '설비', w: 1, h: 2, rotations: [0, 3], anchor: 'center', isoW: 1.05, emoji: '🪑', color: '#fde9cf',
-      desc: '벽에 거는 접이식 의자예요. 보호자가 볼일을 보는 동안 아이가 앉아 기다려요. 뒤쪽 벽 바로 옆에 가운데 높이로 붙어요.' },
+    { id: 'babySeat', name: '유아 의자', layer: 'floor', mount: true, bands: [2], group: '설비', w: 1, h: 2, rotations: [0, 3, 2, 1], anchor: 'center', isoW: 1.05, emoji: '🪑', color: '#fde9cf',
+      desc: '벽에 거는 접이식 의자예요. 보호자가 볼일을 보는 동안 아이가 앉아 기다려요. 네 벽 어디든(입구 앞 제외) 바로 옆에 가운데 높이로 붙어요.' },
     // 실제 제품은 약 가로 60 × 깊이 65cm. 벽 판까지 생각해 벽을 따라 3칸, 깊이 2칸
-    { id: 'ostomy', name: '오스토미 세척대', layer: 'floor', group: '설비', w: 3, h: 2, rotations: [0, 3], emoji: '🚿', color: '#dfe9fb',
-      desc: '장루·요루 주머니를 비우고 씻는 설비예요. 오른쪽 위 벽이나 왼쪽 위 벽을 등지게 놓을 수 있어요.' },
+    { id: 'ostomy', name: '오스토미 세척대', layer: 'floor', group: '설비', w: 3, h: 2, rotations: [0, 3, 2, 1], emoji: '🚿', color: '#dfe9fb',
+      desc: '장루·요루 주머니를 비우고 씻는 설비예요. 네 방향 어느 벽이든 등지게 돌려 놓을 수 있어요.' },
     { id: 'grabBar', name: '손잡이', layer: 'floor', group: '설비', w: 1, h: 3, emoji: '', color: '#f08a24',
       desc: '변기 바로 옆에 붙여 주세요. 몸을 옮기거나 일어설 때 잡아요.' },
 
