@@ -86,7 +86,7 @@ var MODU_CONFIG = {
     { id: 'ostomy', name: '장루·요루 이용자', emoji: '🙂', color: '#2f9e7a', scale: 1.36,
       needs: ['변기', '오스토미 세척대', '세면대'],
       happy: '주머니를 편하게 정리했어요!' },
-    { id: 'blind', name: '시각장애인', emoji: '🧑‍🦯', color: '#7a5bd1',
+    { id: 'blind', name: '시각장애인', emoji: '🧑‍🦯', color: '#7a5bd1', scale: 1.36,
       needs: ['입구부터 변기 앞까지 이어진 점자블록', '입구 옆 벽에 점자 안내판', '변기', '세면대'],
       happy: '길을 헤매지 않고 찾아왔어요!' }
   ]
