@@ -34,7 +34,8 @@
   }
   cfg.items.forEach(function (it) {
     tryImage('item:' + it.id, 'assets/items/' + it.id + '.png');
-    if (it.layer === 'floor' || it.layer === 'wall') ['a', 'b'].forEach(function (d) { tryImage('iso:' + it.id + ':' + d, 'assets/items/' + it.id + '_iso_' + d + '.png'); });
+    // a: 위쪽 벽(방향 0), b: 왼쪽 벽(3), c: 아래쪽 벽(2), d: 오른쪽 벽(1). c·d가 없으면 a·b를 씀
+    if (it.layer === 'floor' || it.layer === 'wall') ['a', 'b', 'c', 'd'].forEach(function (d) { tryImage('iso:' + it.id + ':' + d, 'assets/items/' + it.id + '_iso_' + d + '.png'); });
   });
   ['floor', 'wall', 'entrance', 'tactile'].forEach(function (id) { tryImage('item:' + id, 'assets/items/' + id + '.png'); });
   tryImage('iso:tactile:a', 'assets/items/tactile_iso_a.png');  // 마름모 보기용 점자블록 타일
@@ -501,7 +502,7 @@
     var wallSide = o.rot === 3 ? 'left' : 'top';
     var p = wallSide === 'top' ? P(o.x + sz.w / 2, o.y, s) : P(o.x, o.y + sz.h / 2, s);
     p.y -= WALL_H * s * (L.bandOf(cfg, o) - 0.5) / 3;  // 3단 중 해당 단의 가운데 높이
-    var img = images['iso:' + o.id + ':' + (o.rot % 2 ? 'b' : 'a')];
+    var img = images['iso:' + o.id + ':' + 'adcb'[o.rot % 4]] || images['iso:' + o.id + ':' + (o.rot % 2 ? 'b' : 'a')];
     ctx.save();
     if (alpha !== undefined) ctx.globalAlpha = alpha;
     if (img) {
@@ -599,6 +600,10 @@
       if (L.isMounted(cfg, o)) {
         // 벽에 붙은 물건은 벽 바로 앞 깊이(높은 단이 나중에). 같은 칸에 바닥 설비가 있으면 그보다 앞에 그려서 보이게 함
         d = depthOf(o) - 0.95 + L.bandOf(cfg, o) * 0.001;
+        // 앞쪽 벽(아래·오른쪽)에 붙은 물건은 그 낮은 벽보다 앞에 그림
+        var msz = L.sizeOf(cfg, o);
+        if (o.rot === 2) d = o.x + msz.w - 1 + ROWS - 1 + 0.1;
+        if (o.rot === 1) d = COLS - 1 + o.y + msz.h - 1 + 0.1;
         var cells = L.cellsOf(cfg, o);
         b.objects.forEach(function (f) {
           if (L.levelOf(cfg, f) !== 'floor') return;

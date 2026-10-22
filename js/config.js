@@ -46,8 +46,8 @@ var MODU_CONFIG = {
       desc: '벽에 거는 세면대예요. 뒤쪽 벽 바로 옆에 가운데 높이로 붙고, 아래가 비어 있어 휠체어도 다가갈 수 있어요.' },
     { id: 'sinkLow', name: '낮은 세면대', layer: 'floor', mount: true, bands: [1], group: '설비', w: 3, h: 2, rotations: [0, 3], anchor: 'center', isoW: 2.3, emoji: '🚰', color: '#cfeee6',
       desc: '벽 아래 단에 거는 낮은 세면대예요. 앉은 채로 손이 닿고, 아래가 비어 있어 휠체어 무릎이 들어가요. 어린이도 편해요.' },
-    { id: 'diaper', name: '기저귀 교환대', layer: 'floor', mount: true, bands: [2], group: '설비', w: 3, h: 2, rotations: [0, 3], anchor: 'center', isoW: 2.3, emoji: '👶', color: '#fde9cf',
-      desc: '벽에 거는 접이식 교환대예요. 뒤쪽 벽 바로 옆에 가운데 높이로 붙어요. 아이를 돌보는 보호자는 성별과 상관없이 필요해요.' },
+    { id: 'diaper', name: '기저귀 교환대', layer: 'floor', mount: true, bands: [2], group: '설비', w: 3, h: 2, rotations: [0, 3, 2, 1], anchor: 'center', isoW: 2.3, emoji: '👶', color: '#fde9cf',
+      desc: '벽에 거는 접이식 교환대예요. 네 벽 어디든(입구 앞 제외) 바로 옆에 가운데 높이로 붙어요. 아이를 돌보는 보호자는 성별과 상관없이 필요해요.' },
     { id: 'babySeat', name: '유아 의자', layer: 'floor', mount: true, bands: [2], group: '설비', w: 1, h: 2, rotations: [0, 3], anchor: 'center', isoW: 1.05, emoji: '🪑', color: '#fde9cf',
       desc: '벽에 거는 접이식 의자예요. 보호자가 볼일을 보는 동안 아이가 앉아 기다려요. 뒤쪽 벽 바로 옆에 가운데 높이로 붙어요.' },
     // 실제 제품은 약 가로 60 × 깊이 65cm. 벽 판까지 생각해 벽을 따라 3칸, 깊이 2칸

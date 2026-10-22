@@ -414,6 +414,35 @@ tests['장루·요루: 오스토미 세척대 정면에 서서 바라봄'] = fun
   });
 };
 
+tests['기저귀 교환대: 앞쪽 벽(아래·오른쪽)에도 붙음, 입구 앞은 안 됨'] = function () {
+  var b = L.createBoard(cfg), R = cfg.rows, C = cfg.cols;
+  var d = L.addObject(b, cfg, 'diaper', 6, R - 1);              // 아래쪽 벽을 누름
+  assert.ok(d.ok, d.msg);
+  var o = b.objects[d.index], s = L.sizeOf(cfg, o);
+  assert.strictEqual(o.rot, 2); assert.strictEqual(o.y + s.h, R - 1);
+  var r = L.addObject(b, cfg, 'diaper', C - 1, 6);              // 오른쪽 벽
+  assert.ok(r.ok, r.msg);
+  o = b.objects[r.index]; s = L.sizeOf(cfg, o);
+  assert.strictEqual(o.rot, 1); assert.strictEqual(o.x + s.w, C - 1);
+  // 입구(x14~17) 앞은 안 됨
+  assert.strictEqual(L.addObject(b, cfg, 'diaper', 15, R - 1).ok, false);
+  // 다른 벽걸이(휴지걸이)는 여전히 뒤쪽 벽만
+  assert.strictEqual(L.addObject(b, cfg, 'paperHolder', 6, R - 1).ok, false);
+  // 아래-왼쪽 모서리에서 돌리면 왼쪽 벽으로
+  var c = L.addObject(b, cfg, 'diaper', 1, R - 1);
+  assert.ok(c.ok, c.msg);
+  assert.ok(L.rotateObject(b, cfg, c.index).ok);
+  assert.ok([1, 3].indexOf(b.objects[c.index].rot) >= 0 || b.objects[c.index].rot === 0);
+  // 보호자는 아래쪽 벽 교환대 정면(위쪽)에 서서 바라봄
+  var t = L.createBoard(cfg);
+  L.addObject(t, cfg, 'toilet', 5, 2); L.addObject(t, cfg, 'sinkLow', 12, 0);
+  L.addObject(t, cfg, 'childToilet', 15, 6); L.addObject(t, cfg, 'diaper', 6, R - 1);
+  var fam = L.evaluate(t, cfg).filter(function (x) { return x.id === 'family'; })[0];
+  assert.strictEqual(fam.ok, true, fam.reason);
+  var dz = t.objects.filter(function (q) { return q.id === 'diaper'; })[0];
+  assert.ok(fam.path.some(function (q) { return q.face === 'front_b' && q.y + 2 === dz.y; }), 'faces diaper on bottom wall');
+};
+
 var failed = 0;
 Object.keys(tests).forEach(function (name) {
   try { tests[name](); console.log('✓ ' + name); }

@@ -78,7 +78,18 @@ var ModuLogic = (function () {
   }
 
   // 벽 가운데 단 물건이 붙는 벽: 방향 0은 위쪽 벽(y=0), 3은 왼쪽 벽(x=0)
-  function onBackWall(o) { return o.rot === 0 ? o.y === 1 : o.rot === 3 ? o.x === 1 : false; }
+  // 벽에 붙는 물건이 제 벽 바로 옆에 있는지. 방향 0: 위쪽 벽, 3: 왼쪽 벽 (뒤쪽 벽)
+  // 방향 2: 아래쪽 벽, 1: 오른쪽 벽 (앞쪽 벽, rotations에 넣은 물건만). 입구 앞은 안 됨
+  function onWall(b, cfg, o) {
+    var s = sizeOf(cfg, o), rots = itemById(cfg, o.id).rotations || [0, 3];
+    if (rots.indexOf(o.rot) === -1) return false;
+    if (o.rot === 0) return o.y === 1;
+    if (o.rot === 3) return o.x === 1;
+    if (o.rot === 1) return o.x + s.w === b.cols - 1;
+    if (o.y + s.h !== b.rows - 1) return false;
+    for (var x = o.x; x < o.x + s.w; x++) if (isEntrance(cfg, x, b.rows - 1)) return false;
+    return true;
+  }
 
   // 설비를 그 자리에 놓을 수 있는지
   function fits(b, cfg, o, skip) {
@@ -89,16 +100,32 @@ var ModuLogic = (function () {
       if (!interior(b, cs[i].x, cs[i].y)) return { ok: false, msg: '화장실 안쪽에만 놓을 수 있어요.' };
       if (occ[cs[i].y][cs[i].x] !== -1) return { ok: false, msg: level !== 'floor' ? '같은 높이에 다른 물건이 있어요.' : '다른 설비와 겹쳐요.' };
     }
-    if (level !== 'floor' && !onBackWall(o)) return { ok: false, msg: itemById(cfg, o.id).name + '은(는) 뒤쪽 벽 바로 옆 칸에만 붙일 수 있어요.' };
+    if (level !== 'floor' && !onWall(b, cfg, o)) {
+      var front = (itemById(cfg, o.id).rotations || []).some(function (r) { return r === 1 || r === 2; });
+      return { ok: false, msg: itemById(cfg, o.id).name + '은(는) ' + (front ? '벽 바로 옆 칸(입구 앞 제외)' : '뒤쪽 벽 바로 옆 칸') + '에만 붙일 수 있어요.' };
+    }
     return { ok: true };
   }
 
   // 벽 가운데 단 물건: 누른 칸에서 붙일 벽과 칸을 정함 (벽 칸을 눌러도 바로 옆 칸으로)
-  function snapToWall(o, cx, cy) {
-    if (cy <= 1 && cx >= 1) { o.x = cx; o.y = 1; o.rot = 0; return true; }
-    if (cx <= 1 && cy >= 1) { o.x = 1; o.y = cy; o.rot = 3; return true; }
+  // 가장 가까운 붙일 수 있는 벽으로 방향과 자리를 맞춤 (그 벽 쪽 칸을 누르거나 끌었을 때)
+  function snapToWall(b, cfg, o, cx, cy) {
+    var rots = itemById(cfg, o.id).rotations || [0, 3], best = null;
+    function size(r) { return sizeOf(cfg, { id: o.id, rot: r }); }
+    var cand = {
+      0: cy - 1, 3: cx - 1,
+      2: (b.rows - 1 - size(2).h) - cy, 1: (b.cols - 1 - size(1).w) - cx
+    };
+    rots.forEach(function (r) { if (cand[r] <= 0 && (best === null || cand[r] < cand[best])) best = r; });
     o.x = cx; o.y = cy;
-    return false;
+    if (best === null) return false;
+    o.rot = best;
+    var s = size(best);
+    if (best === 0) o.y = 1;
+    else if (best === 3) o.x = 1;
+    else if (best === 2) o.y = b.rows - 1 - s.h;
+    else o.x = b.cols - 1 - s.w;
+    return true;
   }
 
   // 안쪽으로 밀어 넣기
@@ -114,10 +141,10 @@ var ModuLogic = (function () {
     var o = { id: id, x: 0, y: 0, rot: it.rotatable === false ? 0 : (rot || 0) };
     if (it.mount) {
       o.band = it.bands.indexOf(band) !== -1 ? band : it.bands[0];
-      snapToWall(o, cx, cy);
+      snapToWall(b, cfg, o, cx, cy);
       // 벽을 따라 긴 물건은 누른 칸이 가운데가 되도록
       var ms = sizeOf(cfg, o);
-      if (o.rot === 0) o.x -= Math.floor((ms.w - 1) / 2); else o.y -= Math.floor((ms.h - 1) / 2);
+      if (o.rot % 2 === 0) o.x -= Math.floor((ms.w - 1) / 2); else o.y -= Math.floor((ms.h - 1) / 2);
       clampIn(b, cfg, o);
       return o;
     }
@@ -141,7 +168,7 @@ var ModuLogic = (function () {
   function moveObject(b, cfg, i, x, y) {
     var o = b.objects[i];
     var n = { id: o.id, x: x, y: y, rot: o.rot, band: o.band };
-    if (isMounted(cfg, o) && !snapToWall(n, x, y)) return { ok: false };
+    if (isMounted(cfg, o) && !snapToWall(b, cfg, n, x, y)) return { ok: false };
     clampIn(b, cfg, n);
     if (n.x === o.x && n.y === o.y && n.rot === o.rot) return { ok: false };
     var f = fits(b, cfg, n, i);
@@ -155,6 +182,7 @@ var ModuLogic = (function () {
     var it = itemById(cfg, o.id);
     if (it.rotatable === false) return { ok: false, msg: it.name + '은(는) 방향을 바꿀 수 없어요.' };
     var rots = it.rotations || [0, 1, 2, 3];
+    if (isMounted(cfg, o)) return rotateMounted(b, cfg, i, rots);
     var s = sizeOf(cfg, o);
     var n = { id: o.id, x: 0, y: 0, rot: rots[(rots.indexOf(o.rot) + 1) % rots.length], band: o.band };
     var ns = sizeOf(cfg, n);
@@ -166,6 +194,22 @@ var ModuLogic = (function () {
     if (!f.ok) return { ok: false, msg: '돌릴 자리가 없어요. 주변을 비워 주세요.' };
     b.objects[i] = n;
     return { ok: true };
+  }
+
+  // 벽에 붙은 물건 돌리기: 벽 모서리에서 지금 자리와 겹치는 다른 벽으로 옮겨 붙임
+  function rotateMounted(b, cfg, i, rots) {
+    var o = b.objects[i], cells = {};
+    cellsOf(cfg, o).forEach(function (c) { cells[key(b, c.x, c.y)] = true; });
+    for (var k = 1; k < rots.length; k++) {
+      var r = rots[(rots.indexOf(o.rot) + k) % rots.length];
+      var n = { id: o.id, x: o.x, y: o.y, rot: r, band: o.band }, s = sizeOf(cfg, n);
+      if (r === 0) n.y = 1; else if (r === 3) n.x = 1;
+      else if (r === 2) n.y = b.rows - 1 - s.h; else n.x = b.cols - 1 - s.w;
+      clampIn(b, cfg, n);
+      if (!cellsOf(cfg, n).some(function (c) { return cells[key(b, c.x, c.y)]; })) continue;
+      if (fits(b, cfg, n, i).ok) { b.objects[i] = n; return { ok: true }; }
+    }
+    return { ok: false, msg: '벽 모서리 칸에서만 방향을 바꿀 수 있어요.' };
   }
 
   // 벽에 붙은 물건의 높이 단을 다음 단으로 (붙일 수 있는 단만 돌아가며)
