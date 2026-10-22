@@ -337,7 +337,7 @@ var ModuLogic = (function () {
     // ---------- 이동 경로 ----------
     // 1) 변기 → 2) 각자 필요한 설비 → 3) 각자에게 맞는 세면대 → 4) 입구로 돌아와 결과 발표
     // 갈 수 없는 단계는 건너뜀. 각 목적지에서 잠깐 멈춤(같은 점을 PAUSE번 반복)
-    var PAUSE = 6;
+    var PAUSE = 10;
     function covOf(s, k) {
       var cov = {};
       for (var dy = 0; dy < k; dy++) for (var dx = 0; dx < k; dx++) cov[key(b, s.x + dx, s.y + dy)] = true;
@@ -363,7 +363,7 @@ var ModuLogic = (function () {
         path.push(lead);
       }
       cur = lead;
-      // front: 설비 정면(벽 반대쪽) 한가운데에 서서 설비를 바라보며 이용
+      // front: 설비 정면(벽 반대쪽) 한가운데에 서서 설비를 바라보며 이용 (정면에 갈 수 없으면 닿는 아무 칸)
       function go(ids, walkFn, front) {
         if (!ofType(ids).length) return false;
         var w = bfs(b, cfg, k, walkFn, [cur]), target = null, face = null;
@@ -401,11 +401,11 @@ var ModuLogic = (function () {
         return { cells: cells, cx: o.x + sz.w / 2, cy: o.y - k / 2, face: 'front_b' };
       }
       // 1) 변기: 시각장애인은 점자블록을 따라서만
-      go(['toilet'], v.id === 'blind' ? tactileWalk : walkable);
+      go(['toilet'], v.id === 'blind' ? tactileWalk : walkable, true);
       // 2) 각자 필요한 설비
-      if (STEP2[v.id]) go(STEP2[v.id], walkable, v.id === 'ostomy');
+      if (STEP2[v.id]) go(STEP2[v.id], walkable, true);
       // 3) 세면대: 휠체어 이용자·보호자는 낮은 세면대, 그 밖은 세면대 (없으면 낮은 세면대)
-      if (!go(SINK[v.id] || ['sink'], walkable) && !SINK[v.id]) go(['sinkLow'], walkable);
+      if (!go(SINK[v.id] || ['sink'], walkable, true) && !SINK[v.id]) go(['sinkLow'], walkable, true);
       // 4) 입구로: 들어온 길처럼 안쪽 지점을 거쳐 곧장 나감
       var back = bfs(b, cfg, k, walkable, [cur]);
       if (back.parent[key(b, lead.x, lead.y)] !== undefined) {

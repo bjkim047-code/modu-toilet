@@ -382,6 +382,19 @@ tests['이동 경로: 변기 → 필요한 설비 → 세면대 → 입구'] = f
   }
 };
 
+tests['변기·세면대·교환대도 정면에 서서 바라봄'] = function () {
+  var b = L.createBoard(cfg);
+  L.addObject(b, cfg, 'toilet', 5, 2);           // 위쪽 벽, x5~6 y1~3 → 정면 y4
+  L.addObject(b, cfg, 'sinkLow', 0, 7);          // 왼쪽 벽 → 정면 x3
+  L.addObject(b, cfg, 'diaper', 12, 0);          // 위쪽 벽 x11~13 y1~2 → 정면 y3
+  L.addObject(b, cfg, 'sink', 16, 0);
+  var r = {}; L.evaluate(b, cfg).forEach(function (x) { r[x.id] = x; });
+  function standsAt(res, test, face) { return res.path.some(function (q) { return q.face === face && test(q); }); }
+  assert.ok(standsAt(r.family, function (q) { return q.y === 4 && q.x >= 5 && q.x <= 6; }, 'walk_a'), 'toilet front');
+  assert.ok(standsAt(r.family, function (q) { return q.y === 3 && q.x >= 11 && q.x <= 13; }, 'walk_a'), 'diaper front');
+  assert.ok(standsAt(r.family, function (q) { return q.x === 3; }, 'walk_b'), 'sinkLow front');
+};
+
 tests['장루·요루: 오스토미 세척대 정면에 서서 바라봄'] = function () {
   [[{ x: 9, y: 1, rot: 0 }, 'walk_a'], [{ x: 1, y: 5, rot: 3 }, 'walk_b']].forEach(function (cse) {
     var b = L.createBoard(cfg);
@@ -389,12 +402,15 @@ tests['장루·요루: 오스토미 세척대 정면에 서서 바라봄'] = fun
     var o = { id: 'ostomy', x: cse[0].x, y: cse[0].y, rot: cse[0].rot };
     assert.ok(L.fits(b, cfg, o, -1).ok); b.objects.push(o);
     var r = L.evaluate(b, cfg).filter(function (x) { return x.id === 'ostomy'; })[0];
-    var st = r.path.filter(function (p) { return p.face; });
-    assert.ok(st.length > 0, 'no stop');
-    assert.strictEqual(st[0].face, cse[1]);
-    var sz = L.sizeOf(cfg, o), p = st[0];
-    if (o.rot === 0) { assert.strictEqual(p.y, o.y + sz.h); assert.ok(p.x >= o.x && p.x + 1 <= o.x + sz.w); }
-    else { assert.strictEqual(p.x, o.x + sz.w); assert.ok(p.y >= o.y && p.y + 1 <= o.y + sz.h); }
+    var sz = L.sizeOf(cfg, o);
+    // 세척대 정면 줄에 서서 세척대를 바라보는 멈춤이 있어야 함
+    var p = r.path.filter(function (q) {
+      if (!q.face) return false;
+      return o.rot === 0 ? q.y === o.y + sz.h && q.x >= o.x && q.x + 1 <= o.x + sz.w
+                         : q.x === o.x + sz.w && q.y >= o.y && q.y + 1 <= o.y + sz.h;
+    })[0];
+    assert.ok(p, 'no front stop');
+    assert.strictEqual(p.face, cse[1]);
   });
 };
 
