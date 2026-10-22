@@ -1108,9 +1108,19 @@
     requestAnimationFrame(loop);
   }
 
+  // 단체 이름 글씨 크기를 제목(무지개 줄) 너비에 꼭 맞춤
+  function fitOrg() {
+    var org = document.querySelector('.org'), title = document.querySelector('.title');
+    if (!org || !title) return;
+    org.style.fontSize = '8px';  // 먼저 작게 해서 제목 너비만 재고
+    var tw = title.getBoundingClientRect().width, w = org.getBoundingClientRect().width;
+    if (w && tw) org.style.fontSize = (8 * tw / w) + 'px';
+  }
+  window.addEventListener('resize', fitOrg);
   window.addEventListener('resize', resize);
   if (window.ResizeObserver) new ResizeObserver(resize).observe(wrap);
-  if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { state.dirty = true; drawPalette(); });
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { state.dirty = true; drawPalette(); fitOrg(); });
+  fitOrg();
 
   renderPalette();
   renderVisitors();

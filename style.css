@@ -73,8 +73,9 @@ body {
   background: linear-gradient(90deg, #e4403a 0 16.6%, #f39a2b 0 33.3%, #f2cf3a 0 50%, #3fa66b 0 66.6%, #3b7fd6 0 83.3%, #8a55c9 0) bottom / 100% 4px no-repeat;
 }
 .title span { color: var(--muted); }
-.brand { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
-.org { margin: 0; font-size: 12px; font-weight: 600; color: var(--muted); letter-spacing: 0.02em; }
+/* 제목 아래 무지개 줄 밑에 단체 이름. 글씨 크기는 제목 너비에 맞춤(game.js fitOrg) */
+.brand { display: inline-flex; flex-direction: column; align-items: flex-start; gap: 3px; }
+.org { margin: 0; font-size: 11px; font-weight: 600; color: var(--muted); white-space: nowrap; line-height: 1.1; }
 .visitors { display: flex; gap: 6px; flex-wrap: wrap; flex: 1 1 auto; min-width: 0; }
 .vchip {
   display: flex; align-items: center; gap: 6px;
