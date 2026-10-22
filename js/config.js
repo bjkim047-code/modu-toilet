@@ -28,6 +28,11 @@ var MODU_CONFIG = {
   //   wall    : 바깥 벽에 붙이는 물건
   //   tool    : 지우개
   items: [
+    { id: 'select', name: '선택', layer: 'tool', group: '도구', emoji: '👆',
+      desc: '놓은 설비를 눌러 고르고, 끌어서 옮기거나 위쪽 버튼으로 돌리기·지우기를 해요.' },
+    { id: 'eraser', name: '지우개', layer: 'tool', group: '도구', emoji: '🧽',
+      desc: '설비, 안내판, 점자블록을 지워요. 끌면 여러 개를 지울 수 있어요.' },
+
     { id: 'tactile', name: '점자블록', layer: 'tactile', group: '바닥',
       desc: '시각장애인이 발로 길을 알 수 있는 바닥이에요. 입구부터 변기 앞까지 이어 주세요. 설비 아래에도 깔 수 있어요.' },
 
@@ -67,8 +72,6 @@ var MODU_CONFIG = {
     { id: 'rainbow', name: '무지개 스티커', layer: 'floor', mount: true, bands: [3, 2, 1], group: '벽에 붙이기', w: 2, h: 1, rotations: [0, 3], along: true, isoW: 1.25, emoji: '🌈', color: '#ffffff',
       desc: '벽에 붙이는 무지개 스티커예요. 모두를 환영한다는 표시가 돼요. 높이를 고를 수 있어요.' },
 
-    { id: 'eraser', name: '지우개', layer: 'tool', group: '도구', emoji: '🧽',
-      desc: '설비, 안내판, 점자블록을 지워요. 끌면 여러 개를 지울 수 있어요.' }
   ],
 
   // 이용객 5명

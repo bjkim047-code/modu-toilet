@@ -13,7 +13,7 @@
 
   var state = {
     board: load() || L.createBoard(cfg),
-    tool: 'toilet',
+    tool: 'select',
     selected: -1,    // 선택한 설비 번호
     band: 2,         // 새로 붙일 벽 물건의 높이 단 (높이를 고를 수 있는 물건만)
     cam: { scale: 20, ox: 0, oy: 0, fit: 20 },
@@ -942,6 +942,15 @@
   function pressStart(cell) {
     if (!cell || state.run) return null;
     var b = state.board, it = L.itemById(cfg, state.tool);
+    // 선택 도구: 누른 칸의 설비(벽 물건 먼저)를 고르고 끌어서 옮김. 빈 곳이면 선택 해제
+    if (it.id === 'select') {
+      var si = L.objectAt(b, cfg, cell.x, cell.y);
+      if (si === -1) { select(-1); return null; }
+      select(si);
+      var so = b.objects[si];
+      showInfo('<b>' + esc(L.itemById(cfg, so.id).name) + '</b>을(를) 골랐어요. 끌어서 옮기거나 위쪽 버튼으로 돌리기·지우기를 해요.');
+      return { type: 'move', index: si, offX: cell.x - so.x, offY: cell.y - so.y, changed: false };
+    }
     if (it.layer === 'tactile' || it.layer === 'tool') {
       var g = { type: 'brush', done: {}, changed: false, warned: false };
       brush(g, cell);
@@ -999,7 +1008,7 @@
     if (g.type === 'brush') brush(g, cell);
     if (g.type === 'move') {
       var r = L.moveObject(state.board, cfg, g.index, cell.x - g.offX, cell.y - g.offY);
-      if (r.ok) { changed(); }
+      if (r.ok) { g.changed = true; changed(); }
     }
   }
 
