@@ -40,7 +40,7 @@ var MODU_CONFIG = {
       desc: '꼭 필요해요. 돌리기로 네 방향 어느 벽이든 등지게 놓을 수 있어요.' },
     // anchor: 'center' = 그림 가운데를 차지한 칸들의 가운데 위에 둠 (벽에서 앞으로 튀어나온 큰 벽걸이 물건)
     // 실제 약 35 × 50cm
-    { id: 'childToilet', name: '아동용 변기', layer: 'floor', group: '설비', w: 2, h: 2, rotations: [0, 3], emoji: '🚽', color: '#fff3c4',
+    { id: 'childToilet', name: '아동용 변기', layer: 'floor', group: '설비', w: 2, h: 2, rotations: [0, 3, 2, 1], emoji: '🚽', color: '#fff3c4',
       desc: '아이 몸에 맞는 작은 변기예요. 보호자와 함께 온 아이가 혼자 앉을 수 있어요.' },
     { id: 'sink', name: '세면대', layer: 'floor', mount: true, bands: [2], group: '설비', w: 3, h: 2, rotations: [0, 3, 2, 1], anchor: 'center', isoW: 2.3, emoji: '🚰', color: '#ffffff',
       desc: '벽에 거는 세면대예요. 네 벽 어디든(입구 앞 제외) 바로 옆에 가운데 높이로 붙고, 아래가 비어 있어 휠체어도 다가갈 수 있어요.' },
