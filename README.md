@@ -81,5 +81,7 @@ node tests/logic.test.js      # 판정 규칙 테스트
 
 ## 배포 (GitHub Pages)
 
+`index.html`의 CSS·JS 주소 끝에 `?v=버전`을 붙여 두었습니다. 파일을 고친 뒤 이 값을 바꾸면 브라우저가 예전 파일을 쓰지 않고 새로 받습니다.
+
 저장소 Settings → Pages → Branch를 `main`, 폴더를 `/ (root)`로 정하고 저장하면
 `https://<계정>.github.io/modu-toilet/` 주소로 공개됩니다.
