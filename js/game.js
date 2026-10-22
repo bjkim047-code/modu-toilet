@@ -601,7 +601,7 @@
     var faceImg = !!images['visitor:' + v.id + ':' + face];
     if (img) {
       // 그림 비율을 지키고 발(바퀴)이 바닥 위치(py + size * 0.45)에 닿게
-      var ih = size * 1.3, iw = ih * img.width / img.height;
+      var ih = size * 1.3 * (v.scale || 1), iw = ih * img.width / img.height;
       ctx.drawImage(img, px - iw / 2, py + size * 0.45 - ih, iw, ih);
     } else {
       ctx.fillStyle = 'rgba(0,0,0,0.18)';
