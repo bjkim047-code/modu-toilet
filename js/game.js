@@ -38,7 +38,7 @@
   ['floor', 'wall', 'entrance', 'tactile'].forEach(function (id) { tryImage('item:' + id, 'assets/items/' + id + '.png'); });
   tryImage('iso:tactile:a', 'assets/items/tactile_iso_a.png');  // 마름모 보기용 점자블록 타일
   cfg.visitors.forEach(function (v) {
-    // walk_a: 오른쪽 위로 가는 뒷모습, walk_b: 왼쪽 위로 가는 뒷모습, happy/sad: 도착했을 때
+    // walk_a: ↗ 오른쪽 위로 갈 때, walk_b: ↖ 왼쪽 위로 갈 때 쓰는 뒷모습, happy/sad: 도착했을 때
     ['normal', 'happy', 'sad', 'walk_a', 'walk_b'].forEach(function (f) { tryImage('visitor:' + v.id + ':' + f, 'assets/visitors/' + v.id + '_' + f + '.png'); });
   });
 
