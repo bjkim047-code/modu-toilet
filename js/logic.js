@@ -352,6 +352,17 @@ var ModuLogic = (function () {
       var first = bfs(b, cfg, k, walkable);
       if (!first.order.length) { var e = cfg.entrance[0]; return { path: [{ x: e.x, y: e.y - k + 1 }], k: k }; }
       var home = first.order[0], cur = home, path = [home];
+      // 입구에 들어와 바로 꺾지 않고 화장실 안쪽으로 몇 칸 곧장 걸어 들어감
+      var LEAD = 5, leadFn = v.id === 'blind' ? tactileWalk : walkable, lead = home;
+      var okState = function (x, y) {
+        for (var dy = 0; dy < k; dy++) for (var dx = 0; dx < k; dx++) if (!leadFn(x + dx, y + dy)) return false;
+        return true;
+      };
+      for (var n = 0; n < LEAD && okState(lead.x, lead.y - 1); n++) {
+        lead = { x: lead.x, y: lead.y - 1 };
+        path.push(lead);
+      }
+      cur = lead;
       function go(ids, walkFn) {
         if (!ofType(ids).length) return false;
         var w = bfs(b, cfg, k, walkFn, [cur]), target = null;
@@ -371,9 +382,12 @@ var ModuLogic = (function () {
       if (STEP2[v.id]) go(STEP2[v.id], walkable);
       // 3) 세면대: 휠체어 이용자·보호자는 낮은 세면대, 그 밖은 세면대 (없으면 낮은 세면대)
       if (!go(SINK[v.id] || ['sink'], walkable) && !SINK[v.id]) go(['sinkLow'], walkable);
-      // 4) 입구로
+      // 4) 입구로: 들어온 길처럼 안쪽 지점을 거쳐 곧장 나감
       var back = bfs(b, cfg, k, walkable, [cur]);
-      if (back.parent[key(b, home.x, home.y)] !== undefined) path = path.concat(pathTo(b, back, home).slice(1));
+      if (back.parent[key(b, lead.x, lead.y)] !== undefined) {
+        path = path.concat(pathTo(b, back, lead).slice(1));
+        for (var y2 = lead.y + 1; y2 <= home.y; y2++) path.push({ x: home.x, y: y2 });
+      } else if (back.parent[key(b, home.x, home.y)] !== undefined) path = path.concat(pathTo(b, back, home).slice(1));
       return { path: path, k: k };
     }
 

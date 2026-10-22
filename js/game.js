@@ -331,7 +331,7 @@
       if (rv) {
         var px = rv.wx * s, py = rv.wy * s, size = s * Math.max(1.8, rv.r.size * 0.95);
         drawVisitor(rv.v, px, py, size, rv.face);
-        if (rv.arrived) drawBubble(rv.r.reason, px, py - size * 0.2, s, rv.r.ok);
+        if (rv.arrived) drawBubble(rv.r.reason, px, headTop(rv.v, py, size) - s * 0.1, s, rv.r.ok);
       }
     }
   }
@@ -591,7 +591,7 @@
     }
     items.sort(function (a, c) { return a.d - c.d; });
     items.forEach(function (it) { it.draw(); });
-    if (rv && rv.arrived) drawBubble(rv.r.reason, vp.x, vp.y - vsize * 0.2, s, rv.r.ok);
+    if (rv && rv.arrived) drawBubble(rv.r.reason, vp.x, headTop(rv.v, vp.y, vsize) - s * 0.1, s, rv.r.ok);
   }
 
   function visitorById(id) {
@@ -622,6 +622,13 @@
     }
   }
 
+  // 캐릭터 그림의 머리 꼭대기 (drawVisitor와 같은 계산). 말풍선은 이 위에 띄움
+  function headTop(v, py, size) {
+    var img = images['visitor:' + v.id + ':normal'];
+    return img ? py + size * 0.45 - size * 1.3 * (v.scale || 1) : py - size * 0.5;
+  }
+
+  // 말풍선: 아래 끝이 py보다 조금 위에 오도록 그림
   function drawBubble(text, px, py, s, ok) {
     var fs = Math.max(12, Math.min(16, s * 0.6));
     ctx.font = '600 ' + fs + 'px ' + getComputedStyle(document.body).fontFamily;
@@ -631,7 +638,7 @@
     var pad = fs * 0.6, lh = fs * 1.3;
     var bw = w + pad * 2, bh = lines.length * lh + pad * 1.4;
     var bx = Math.max(-state.tx + 4, Math.min(px - bw / 2, -state.tx + wrap.clientWidth - bw - 4));
-    var by = py - bh - s;
+    var by = py - bh - s * 0.2;
     if (by < -state.ty + 4) by = py + s;
     ctx.fillStyle = '#ffffff';
     ctx.strokeStyle = ok ? '#24855a' : '#c2453a'; ctx.lineWidth = 2;
