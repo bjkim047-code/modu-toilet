@@ -186,13 +186,11 @@
     c.restore();
   }
 
-  // ---------- 보기 방식: 'iso'(마름모) 또는 'flat'(네모) ----------
-  var VIEW_KEY = 'modu-toilet-view';
+  // ---------- 보기 방식: 마름모(쿼터뷰)만 씀. 'flat'(네모) 그리기 코드는 남겨 둠 ----------
   var WALL_H = 1.7;  // 마름모 보기에서 뒤쪽 벽 높이 (칸 너비 기준)
   // 벽 색: 블루블랙. 뒤쪽 높은 벽(back)과 앞쪽 낮은 벽(front)
   var WALL_C = { back: '#5a6273', front: '#4a5160', line: 'rgba(160,172,196,0.45)', rows: 3 };
   state.view = 'iso';
-  try { if (localStorage.getItem(VIEW_KEY) === 'flat') state.view = 'flat'; } catch (e) {}
 
   // 보드 전체가 화면에서 차지하는 크기와, 그 안에서 (0,0) 칸 모서리의 위치 (모두 scale에 비례)
   function layout(s) {
@@ -204,9 +202,6 @@
 
   function setView(v) {
     state.view = v;
-    try { localStorage.setItem(VIEW_KEY, v); } catch (e) {}
-    $('btn-view').textContent = v === 'iso' ? '□' : '◇';
-    $('btn-view').title = v === 'iso' ? '네모 보기로 바꾸기' : '마름모 보기로 바꾸기';
     state.cam.zoomed = false;
     resize();
   }
@@ -1085,7 +1080,6 @@
   $('btn-zoom-in').addEventListener('click', function () { zoomCenter(1.3); });
   $('btn-zoom-out').addEventListener('click', function () { zoomCenter(1 / 1.3); });
   $('btn-fit').addEventListener('click', fitView);
-  $('btn-view').addEventListener('click', function () { setView(state.view === 'iso' ? 'flat' : 'iso'); });
 
   // ---------- 버튼 ----------
   $('btn-test').addEventListener('click', startTest);
