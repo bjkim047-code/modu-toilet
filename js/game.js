@@ -752,7 +752,7 @@
     $('result-close').focus();
     showInfo(fails === 0
       ? '<b>성공!</b> 모두가 이용할 수 있어요. 더 꾸며 보거나 다른 배치도 시험해 보세요.'
-      : '<span class="warn">' + fails + '명이 이용하지 못했어요.</span> 위쪽 이용객을 누르면 그 사람만 다시 시험해 볼 수 있어요.');
+      : '<span class="warn">' + fails + '명이 이용하지 못했어요.</span> 위쪽 이용객을 고르고 ▶ 테스트하기로 한 명씩 다시 시험해 보세요.');
   }
 
   // ---------- 이용객 칩 ----------
@@ -771,13 +771,14 @@
       btn.querySelector('.av').style.background = v.color + '33';
       btn.querySelector('.name').textContent = v.name;
       btn.querySelector('.face').textContent = r ? (r.ok ? '😄' : '😢') : '';
-      btn.title = v.name + ' 테스트하기';
+      btn.title = v.name;
       btn.setAttribute('aria-pressed', String(state.picked === v.id));
-      // 이용객을 누르면 그 사람만 바로 테스트
+      // 이용객을 누르면 고르고 필요한 것만 보여 줌. 시험은 ▶ 테스트하기로
       btn.addEventListener('click', function () {
         if (state.run) return;
         state.picked = v.id;
-        startTest();
+        renderVisitors();
+        showVisitor(v);
       });
       box.appendChild(btn);
     });
@@ -1115,6 +1116,6 @@
   renderVisitors();
   setView(state.view);
   canvas.style.cursor = 'crosshair';
-  showInfo('빈 화장실이에요. 이용객은 오른쪽 아래 <b>입구</b>로 들어와요. 설비를 골라 보드에 놓고, 위쪽 이용객을 눌러 한 명씩 시험하거나 <b>🏁 도전하기</b>로 모두를 시험해 보세요.');
+  showInfo('빈 화장실이에요. 이용객은 오른쪽 아래 <b>입구</b>로 들어와요. 설비를 골라 보드에 놓고, 위쪽 이용객을 고르고 <b>▶ 테스트하기</b>로 한 명씩, <b>🏁 도전하기</b>로 모두를 시험해 보세요.');
   requestAnimationFrame(loop);
 })();
