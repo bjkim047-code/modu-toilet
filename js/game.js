@@ -706,6 +706,9 @@
       else if (p1.y > p0.y) cand = 'front_b';
       if (cand && (cand.indexOf('walk') === 0 || images['visitor:' + r.id + ':' + cand])) { dir = cand; break; }
     }
+    // 설비 앞에 멈춰 이용할 때는 설비를 바라봄
+    var face = r.path[i].face;
+    if (face && (face.indexOf('walk') === 0 || images['visitor:' + r.id + ':' + face])) dir = face;
     return {
       r: r, v: visitorById(r.id), arrived: arrived, face: arrived ? (r.ok ? 'happy' : 'sad') : dir,
       wx: a.x + (b2.x - a.x) * k + off, wy: a.y + (b2.y - a.y) * k + off

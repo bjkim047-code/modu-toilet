@@ -363,23 +363,47 @@ var ModuLogic = (function () {
         path.push(lead);
       }
       cur = lead;
-      function go(ids, walkFn) {
+      // front: 설비 정면(벽 반대쪽) 한가운데에 서서 설비를 바라보며 이용
+      function go(ids, walkFn, front) {
         if (!ofType(ids).length) return false;
-        var w = bfs(b, cfg, k, walkFn, [cur]), target = null;
+        var w = bfs(b, cfg, k, walkFn, [cur]), target = null, face = null;
+        if (front) {
+          var best = Infinity;
+          b.objects.forEach(function (o) {
+            if (ids.indexOf(o.id) === -1) return;
+            var f = frontOf(o), fset = {};
+            f.cells.forEach(function (c) { fset[key(b, c.x, c.y)] = true; });
+            w.order.forEach(function (s) {
+              var cov = covOf(s, k);
+              if (!Object.keys(cov).some(function (kk) { return fset[kk]; })) return;
+              var d = Math.abs(s.x + k / 2 - f.cx) + Math.abs(s.y + k / 2 - f.cy);
+              if (d < best) { best = d; target = s; face = f.face; }
+            });
+          });
+        }
         for (var i = 0; i < w.order.length && !target; i++) {
           var cov = covOf(w.order[i], k);
           if (ofType(ids).some(function (o) { return touches(o, cov); })) target = w.order[i];
         }
         if (!target) return false;
         path = path.concat(pathTo(b, w, target).slice(1));
-        for (var p = 0; p < PAUSE; p++) path.push(target);
+        for (var p = 0; p < PAUSE; p++) path.push(face ? { x: target.x, y: target.y, face: face } : target);
         cur = target;
         return true;
+      }
+      // 설비 정면 칸들, 정면 가운데, 설비를 바라보는 방향(이동 그림 이름)
+      function frontOf(o) {
+        var sz = sizeOf(cfg, o), cells = [], i, r = o.rot % 4;
+        if (r === 0) { for (i = 0; i < sz.w; i++) cells.push({ x: o.x + i, y: o.y + sz.h }); return { cells: cells, cx: o.x + sz.w / 2, cy: o.y + sz.h + k / 2, face: 'walk_a' }; }
+        if (r === 3) { for (i = 0; i < sz.h; i++) cells.push({ x: o.x + sz.w, y: o.y + i }); return { cells: cells, cx: o.x + sz.w + k / 2, cy: o.y + sz.h / 2, face: 'walk_b' }; }
+        if (r === 1) { for (i = 0; i < sz.h; i++) cells.push({ x: o.x - 1, y: o.y + i }); return { cells: cells, cx: o.x - k / 2, cy: o.y + sz.h / 2, face: 'front_a' }; }
+        for (i = 0; i < sz.w; i++) cells.push({ x: o.x + i, y: o.y - 1 });
+        return { cells: cells, cx: o.x + sz.w / 2, cy: o.y - k / 2, face: 'front_b' };
       }
       // 1) 변기: 시각장애인은 점자블록을 따라서만
       go(['toilet'], v.id === 'blind' ? tactileWalk : walkable);
       // 2) 각자 필요한 설비
-      if (STEP2[v.id]) go(STEP2[v.id], walkable);
+      if (STEP2[v.id]) go(STEP2[v.id], walkable, v.id === 'ostomy');
       // 3) 세면대: 휠체어 이용자·보호자는 낮은 세면대, 그 밖은 세면대 (없으면 낮은 세면대)
       if (!go(SINK[v.id] || ['sink'], walkable) && !SINK[v.id]) go(['sinkLow'], walkable);
       // 4) 입구로: 들어온 길처럼 안쪽 지점을 거쳐 곧장 나감

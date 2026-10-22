@@ -382,6 +382,22 @@ tests['이동 경로: 변기 → 필요한 설비 → 세면대 → 입구'] = f
   }
 };
 
+tests['장루·요루: 오스토미 세척대 정면에 서서 바라봄'] = function () {
+  [[{ x: 9, y: 1, rot: 0 }, 'walk_a'], [{ x: 1, y: 5, rot: 3 }, 'walk_b']].forEach(function (cse) {
+    var b = L.createBoard(cfg);
+    L.addObject(b, cfg, 'toilet', 14, 2);
+    var o = { id: 'ostomy', x: cse[0].x, y: cse[0].y, rot: cse[0].rot };
+    assert.ok(L.fits(b, cfg, o, -1).ok); b.objects.push(o);
+    var r = L.evaluate(b, cfg).filter(function (x) { return x.id === 'ostomy'; })[0];
+    var st = r.path.filter(function (p) { return p.face; });
+    assert.ok(st.length > 0, 'no stop');
+    assert.strictEqual(st[0].face, cse[1]);
+    var sz = L.sizeOf(cfg, o), p = st[0];
+    if (o.rot === 0) { assert.strictEqual(p.y, o.y + sz.h); assert.ok(p.x >= o.x && p.x + 1 <= o.x + sz.w); }
+    else { assert.strictEqual(p.x, o.x + sz.w); assert.ok(p.y >= o.y && p.y + 1 <= o.y + sz.h); }
+  });
+};
+
 var failed = 0;
 Object.keys(tests).forEach(function (name) {
   try { tests[name](); console.log('✓ ' + name); }
