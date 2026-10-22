@@ -21,6 +21,7 @@
     pan: false,
     run: null,       // 테스트 진행 상태
     results: {},     // 이용객별 마지막 결과
+    picked: MODU_CONFIG.visitors[0].id,  // 테스트하기로 시험할 이용객
     dirty: true
   };
 
@@ -653,17 +654,22 @@
   var STEP = reduceMotion ? 0.02 : 0.07;  // 1칸 이동 시간(초)
   var REACT = 1.8;
 
-  function startTest() {
+  // 테스트하기: 고른 이용객 한 명만 / 도전하기: 모두 차례로, 끝나면 결과 발표
+  function startRun(mode, onlyId) {
     if (state.run) { finishRun(); return; }
     select(-1);
     var res = L.evaluate(state.board, cfg);
-    state.results = {};
-    state.run = { list: res, idx: 0, t: 0 };
+    if (mode === 'single') res = res.filter(function (r) { return r.id === onlyId; });
+    else state.results = {};
+    state.run = { list: res, idx: 0, t: 0, mode: mode };
     renderVisitors();
-    $('btn-test').textContent = '⏭ 건너뛰기';
-    $('btn-reset').disabled = true;
-    showInfo('<span class="muted">이용객이 한 명씩 들어와요…</span>');
+    var skipBtn = mode === 'single' ? 'btn-test' : 'btn-challenge';
+    $(skipBtn).textContent = '⏭ 건너뛰기';
+    ['btn-test', 'btn-challenge', 'btn-reset'].forEach(function (id) { if (id !== skipBtn) $(id).disabled = true; });
+    showInfo('<span class="muted">' + (mode === 'single' ? esc(visitorById(onlyId).name) + '이(가) 화장실을 이용해요…' : '이용객이 한 명씩 들어와요…') + '</span>');
   }
+  function startTest() { startRun('single', state.picked); }
+  function startChallenge() { startRun('all'); }
 
   function stepRun(dt) {
     var run = state.run, r = run.list[run.idx];
@@ -709,9 +715,11 @@
     run.list.forEach(function (r) { state.results[r.id] = r; });
     state.run = null;
     $('btn-test').textContent = '▶ 테스트하기';
-    $('btn-reset').disabled = false;
+    $('btn-challenge').textContent = '🏁 도전하기';
+    ['btn-test', 'btn-challenge', 'btn-reset'].forEach(function (id) { $(id).disabled = false; });
     renderVisitors();
-    showResult(run.list);
+    if (run.mode === 'single') showVisitor(visitorById(run.list[0].id));
+    else showResult(run.list);
     state.dirty = true;
   }
 
@@ -737,7 +745,7 @@
     $('result-close').focus();
     showInfo(fails === 0
       ? '<b>성공!</b> 모두가 이용할 수 있어요. 더 꾸며 보거나 다른 배치도 시험해 보세요.'
-      : '<span class="warn">' + fails + '명이 이용하지 못했어요.</span> 위쪽 이용객을 누르면 필요한 것을 볼 수 있어요.');
+      : '<span class="warn">' + fails + '명이 이용하지 못했어요.</span> 위쪽 이용객을 누르면 그 사람만 다시 시험해 볼 수 있어요.');
   }
 
   // ---------- 이용객 칩 ----------
@@ -756,8 +764,14 @@
       btn.querySelector('.av').style.background = v.color + '33';
       btn.querySelector('.name').textContent = v.name;
       btn.querySelector('.face').textContent = r ? (r.ok ? '😄' : '😢') : '';
-      btn.title = v.name;
-      btn.addEventListener('click', function () { showVisitor(v); });
+      btn.title = v.name + ' 테스트하기';
+      btn.setAttribute('aria-pressed', String(state.picked === v.id));
+      // 이용객을 누르면 그 사람만 바로 테스트
+      btn.addEventListener('click', function () {
+        if (state.run) return;
+        state.picked = v.id;
+        startTest();
+      });
       box.appendChild(btn);
     });
   }
@@ -1067,6 +1081,7 @@
 
   // ---------- 버튼 ----------
   $('btn-test').addEventListener('click', startTest);
+  $('btn-challenge').addEventListener('click', startChallenge);
   $('btn-reset').addEventListener('click', function () {
     ask('보드를 비우고 처음부터 꾸밀까요?', function () {
       state.board = L.createBoard(cfg); select(-1); changed(); save();
@@ -1093,6 +1108,6 @@
   renderVisitors();
   setView(state.view);
   canvas.style.cursor = 'crosshair';
-  showInfo('빈 화장실이에요. 이용객은 오른쪽 아래 <b>입구</b>로 들어와요. 설비를 골라 보드를 눌러 놓고 <b>▶ 테스트하기</b>를 눌러 보세요.');
+  showInfo('빈 화장실이에요. 이용객은 오른쪽 아래 <b>입구</b>로 들어와요. 설비를 골라 보드에 놓고, 위쪽 이용객을 눌러 한 명씩 시험하거나 <b>🏁 도전하기</b>로 모두를 시험해 보세요.');
   requestAnimationFrame(loop);
 })();

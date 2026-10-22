@@ -334,6 +334,54 @@ tests['무지개 스티커: 벽 2칸, 높이 선택, 판정 영향 없음'] = fu
   assert.strictEqual(JSON.stringify(L.evaluate(g, cfg).map(function (x) { return x.ok; })), before);
 };
 
+tests['이동 경로: 변기 → 필요한 설비 → 세면대 → 입구'] = function () {
+  var b = goodBoard();
+  L.addObject(b, cfg, 'sink', 12, 0);
+  var r = results(b);
+  function touchesId(res, id) {
+    var cells = []; b.objects.forEach(function (o) { if (o.id === id) cells = cells.concat(L.cellsOf(cfg, o)); });
+    return res.path.findIndex(function (p) {
+      for (var dy = 0; dy < res.size; dy++) for (var dx = 0; dx < res.size; dx++)
+        if (cells.some(function (c) { return Math.abs(c.x - p.x - dx) + Math.abs(c.y - p.y - dy) === 1; })) return true;
+      return false;
+    });
+  }
+  // 멈춘 곳(같은 자리 반복)마다 어떤 설비 옆인지
+  function stops(res) {
+    var out = [];
+    for (var i = 1; i < res.path.length; i++) {
+      var p = res.path[i], q = res.path[i - 1];
+      if (p.x === q.x && p.y === q.y && (out.length === 0 || out[out.length - 1].i !== i - 1)) {
+        var sub = { path: [p], size: res.size };
+        out.push({ i: i, ids: ['toilet', 'ostomy', 'sink', 'sinkLow', 'diaper', 'babySeat'].filter(function (id) { return touchesId(sub, id) === 0; }) });
+      }
+      if (out.length && p.x === q.x && p.y === q.y) out[out.length - 1].i = i;
+    }
+    return out.map(function (x) { return x.ids; });
+  }
+  // 각 설비를 처음 들른 멈춤 순서 (바로 옆이라 한 자리에서 이어서 쓰면 같은 순서)
+  function order(res, ids) {
+    var st = stops(res);
+    return ids.map(function (id) { return st.findIndex(function (x) { return x.indexOf(id) >= 0; }); });
+  }
+  function inOrder(a) { return a.every(function (v, i) { return v >= 0 && (i === 0 || v >= a[i - 1]); }); }
+  assert.ok(inOrder(order(r.ostomy, ['toilet', 'ostomy', 'sink'])), JSON.stringify(stops(r.ostomy)));
+  assert.ok(inOrder(order(r.wheelchair, ['toilet', 'sinkLow'])), JSON.stringify(stops(r.wheelchair)));
+  var fa = order(r.family, ['toilet', 'diaper', 'babySeat', 'sinkLow']);
+  assert.ok(fa[0] >= 0 && fa[3] >= 0 && (fa[1] >= fa[0] || fa[2] >= fa[0]), JSON.stringify(stops(r.family)));
+  assert.ok(inOrder(order(r.trans, ['toilet', 'sink'])), JSON.stringify(stops(r.trans)));
+  // 처음과 끝은 같은 입구 자리
+  Object.keys(r).forEach(function (id) {
+    var p = r[id].path; assert.deepStrictEqual(p[0], p[p.length - 1], id);
+  });
+  // 시각장애인: 변기에 닿기 전까지는 점자블록(또는 입구) 위로만
+  var bl = r.blind, bt = touchesId(bl, 'toilet');
+  for (var i = 0; i <= bt; i++) {
+    var c = bl.path[i];
+    assert.ok(b.tactile[c.y][c.x] || L.isEntrance(cfg, c.x, c.y), 'blind off tactile at ' + JSON.stringify(c));
+  }
+};
+
 var failed = 0;
 Object.keys(tests).forEach(function (name) {
   try { tests[name](); console.log('✓ ' + name); }

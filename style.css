@@ -89,6 +89,7 @@ body {
 .vchip[data-state="ok"] { border-color: var(--ok); }
 .vchip[data-state="bad"] { border-color: var(--bad); }
 .vchip[data-state="active"] { outline: 2px solid var(--accent); outline-offset: 1px; }
+.vchip[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--accent); }
 .actions { display: flex; gap: 6px; flex-wrap: wrap; }
 
 .btn {

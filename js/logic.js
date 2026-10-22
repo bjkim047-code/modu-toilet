@@ -213,13 +213,18 @@ var ModuLogic = (function () {
   // ---------- 판정 ----------
 
   // k×k 크기로 움직이는 이용객의 이동 (왼쪽 위 좌표 기준 BFS)
-  function bfs(b, cfg, k, walk) {
+  // starts가 있으면 그 위치들에서, 없으면 입구에서 출발
+  function bfs(b, cfg, k, walk, starts) {
     function ok(x, y) {
       for (var dy = 0; dy < k; dy++) for (var dx = 0; dx < k; dx++) if (!walk(x + dx, y + dy)) return false;
       return true;
     }
     var parent = {}, order = [];
-    cfg.entrance.forEach(function (e) {
+    if (starts) starts.forEach(function (s) {
+      var kk = key(b, s.x, s.y);
+      if (parent[kk] === undefined && ok(s.x, s.y)) { parent[kk] = -1; order.push({ x: s.x, y: s.y }); }
+    });
+    else cfg.entrance.forEach(function (e) {
       for (var dy = 0; dy < k; dy++) for (var dx = 0; dx < k; dx++) {
         var x = e.x - dx, y = e.y - dy, kk = key(b, x, y);
         if (parent[kk] === undefined && ok(x, y)) { parent[kk] = -1; order.push({ x: x, y: y }); }
@@ -329,27 +334,55 @@ var ModuLogic = (function () {
       ]
     };
 
-    // 변기 옆 자리까지 가는 경로 (없으면 입구에 머묾)
-    function routeToToilet(walk) {
-      var target = null;
-      for (var i = 0; i < walk.order.length && !target; i++) {
-        var s = walk.order[i], cov = {};
-        for (var dy = 0; dy < walk.k; dy++) for (var dx = 0; dx < walk.k; dx++) cov[key(b, s.x + dx, s.y + dy)] = true;
-        if (toilets.some(function (t) { return touches(t, cov); })) target = s;
+    // ---------- 이동 경로 ----------
+    // 1) 변기 → 2) 각자 필요한 설비 → 3) 각자에게 맞는 세면대 → 4) 입구로 돌아와 결과 발표
+    // 갈 수 없는 단계는 건너뜀. 각 목적지에서 잠깐 멈춤(같은 점을 PAUSE번 반복)
+    var PAUSE = 6;
+    function covOf(s, k) {
+      var cov = {};
+      for (var dy = 0; dy < k; dy++) for (var dx = 0; dx < k; dx++) cov[key(b, s.x + dx, s.y + dy)] = true;
+      return cov;
+    }
+    function tactileWalk(x, y) { return walkable(x, y) && (isEntrance(cfg, x, y) || b.tactile[y][x]); }
+    var STEP2 = { ostomy: ['ostomy'], family: ['diaper', 'babySeat'] };
+    var SINK = { wheelchair: ['sinkLow'], family: ['sinkLow'] };
+
+    function route(v) {
+      var k = v.id === 'wheelchair' ? 3 : v.id === 'blind' ? 1 : 2;
+      var first = bfs(b, cfg, k, walkable);
+      if (!first.order.length) { var e = cfg.entrance[0]; return { path: [{ x: e.x, y: e.y - k + 1 }], k: k }; }
+      var home = first.order[0], cur = home, path = [home];
+      function go(ids, walkFn) {
+        if (!ofType(ids).length) return false;
+        var w = bfs(b, cfg, k, walkFn, [cur]), target = null;
+        for (var i = 0; i < w.order.length && !target; i++) {
+          var cov = covOf(w.order[i], k);
+          if (ofType(ids).some(function (o) { return touches(o, cov); })) target = w.order[i];
+        }
+        if (!target) return false;
+        path = path.concat(pathTo(b, w, target).slice(1));
+        for (var p = 0; p < PAUSE; p++) path.push(target);
+        cur = target;
+        return true;
       }
-      if (target) return pathTo(b, walk, target);
-      if (walk.order.length) return [walk.order[0]];
-      var e = cfg.entrance[0];
-      return [{ x: e.x, y: e.y - walk.k + 1 }];
+      // 1) 변기: 시각장애인은 점자블록을 따라서만
+      go(['toilet'], v.id === 'blind' ? tactileWalk : walkable);
+      // 2) 각자 필요한 설비
+      if (STEP2[v.id]) go(STEP2[v.id], walkable);
+      // 3) 세면대: 휠체어 이용자·보호자는 낮은 세면대, 그 밖은 세면대 (없으면 낮은 세면대)
+      if (!go(SINK[v.id] || ['sink'], walkable) && !SINK[v.id]) go(['sinkLow'], walkable);
+      // 4) 입구로
+      var back = bfs(b, cfg, k, walkable, [cur]);
+      if (back.parent[key(b, home.x, home.y)] !== undefined) path = path.concat(pathTo(b, back, home).slice(1));
+      return { path: path, k: k };
     }
 
     return cfg.visitors.map(function (v) {
       var list = rules[v.id] || [hasToilet, toilet2, sink2];
       var fail = null;
       for (var i = 0; i < list.length && !fail; i++) if (!list[i].test()) fail = list[i].fail;
-      var walk = v.id === 'wheelchair' ? walk3 : walk2;
-      if (v.id === 'blind' && reachable(['toilet'], walkT)) walk = walkT;
-      return { id: v.id, ok: !fail, reason: fail || v.happy, path: routeToToilet(walk), size: walk.k };
+      var r = route(v);
+      return { id: v.id, ok: !fail, reason: fail || v.happy, path: r.path, size: r.k };
     });
   }
 
