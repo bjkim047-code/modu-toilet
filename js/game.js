@@ -39,7 +39,8 @@
   tryImage('iso:tactile:a', 'assets/items/tactile_iso_a.png');  // 마름모 보기용 점자블록 타일
   cfg.visitors.forEach(function (v) {
     // walk_a: ↗ 오른쪽 위로 갈 때, walk_b: ↖ 왼쪽 위로 갈 때 쓰는 뒷모습, happy/sad: 도착했을 때
-    ['normal', 'happy', 'sad', 'walk_a', 'walk_b'].forEach(function (f) { tryImage('visitor:' + v.id + ':' + f, 'assets/visitors/' + v.id + '_' + f + '.png'); });
+    // front_a: ↘ 오른쪽 아래로 갈 때, front_b: ↙ 왼쪽 아래로 갈 때 쓰는 앞모습 (없으면 직전 뒷모습 유지)
+    ['normal', 'happy', 'sad', 'walk_a', 'walk_b', 'front_a', 'front_b'].forEach(function (f) { tryImage('visitor:' + v.id + ':' + f, 'assets/visitors/' + v.id + '_' + f + '.png'); });
   });
 
   // ---------- 저장 ----------
@@ -686,12 +687,16 @@
     var i = Math.min(Math.floor(f), r.path.length - 1), k = f - i;
     var a = r.path[i], b2 = r.path[Math.min(i + 1, r.path.length - 1)];
     var off = r.size / 2, arrived = run.t >= walkTime;
-    // 가는 방향: 오른쪽 위(y 감소)면 walk_a, 왼쪽 위(x 감소)면 walk_b. 앞쪽으로 갈 땐 직전 뒷모습 유지
+    // 가는 방향: ↗(y 감소) walk_a, ↖(x 감소) walk_b, ↘(x 증가) front_a, ↙(y 증가) front_b.
+    // 앞모습 그림이 없는 이용객은 앞쪽으로 갈 때 직전 뒷모습을 유지
     var dir = 'walk_a';
     for (var j = Math.min(i + 1, r.path.length - 1); j > 0; j--) {
-      var p0 = r.path[j - 1], p1 = r.path[j];
-      if (p1.y < p0.y) { dir = 'walk_a'; break; }
-      if (p1.x < p0.x) { dir = 'walk_b'; break; }
+      var p0 = r.path[j - 1], p1 = r.path[j], cand = null;
+      if (p1.y < p0.y) cand = 'walk_a';
+      else if (p1.x < p0.x) cand = 'walk_b';
+      else if (p1.x > p0.x) cand = 'front_a';
+      else if (p1.y > p0.y) cand = 'front_b';
+      if (cand && (cand.indexOf('walk') === 0 || images['visitor:' + r.id + ':' + cand])) { dir = cand; break; }
     }
     return {
       r: r, v: visitorById(r.id), arrived: arrived, face: arrived ? (r.ok ? 'happy' : 'sad') : dir,
