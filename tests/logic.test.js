@@ -101,7 +101,7 @@ var tests = {
     L.placeWall(b, cfg, 'braille', 5, 14);
     assert.match(results(b).blind.reason, /점자 안내판/);
   },
-  '오스토미 세척대를 지우면 장루·요루 이용자 실패': function () {
+  '오스토미 세척대를 지우면 장루·요루 주머니 이용자 실패': function () {
     var b = goodBoard();
     remove(b, 'ostomy');
     assert.match(results(b).ostomy.reason, /오스토미/);
