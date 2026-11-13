@@ -597,7 +597,7 @@
     var depthOf = function (o) { var sz = L.sizeOf(cfg, o); return o.x + o.y + (sz.w + sz.h) / 2; };
     b.objects.forEach(function (o) {
       var d = depthOf(o);
-      if (L.isMounted(cfg, o)) {
+      if (L.isMounted(cfg, o) && !L.standsOnFloor(b, cfg, o)) {
         // 벽에 붙은 물건은 벽 바로 앞 깊이(높은 단이 나중에). 같은 칸에 바닥 설비가 있으면 그보다 앞에 그려서 보이게 함
         d = depthOf(o) - 0.95 + L.bandOf(cfg, o) * 0.001;
         // 앞쪽 벽(아래·오른쪽)에 붙은 물건은 그 낮은 벽보다 앞에 그림
@@ -906,7 +906,11 @@
         size.textContent = it.w + '×' + it.h;
         btn.appendChild(size);
       }
-      btn.addEventListener('click', function () { selectTool(it.id); });
+      btn.addEventListener('click', function () {
+        if (btn.dataset.dragged) { delete btn.dataset.dragged; return; }  // 끌어다 놓은 뒤의 클릭은 무시
+        selectTool(it.id);
+      });
+      btn.addEventListener('pointerdown', function (e) { startPaletteDrag(e, it, btn); });
       nav.appendChild(btn);
     });
     drawPalette();
@@ -933,6 +937,72 @@
       } else { c.fillStyle = '#ffffff'; c.fillRect(0, 0, 60, 60); drawEmoji(c, it.emoji, 30, 30, 38); }
     });
   }
+
+  // ---------- 팔레트에서 보드로 끌어다 놓기 (휴대폰·패드 중심, 마우스도 됨) ----------
+  // 목록이 스크롤되는 방향과 수직으로(보드 쪽으로) 끌거나, 잠깐 누르고 있으면 끌기가 시작됨
+  var pdrag = null;
+  function startPaletteDrag(e, it, btn) {
+    if (state.run || it.layer === 'tool' || (e.pointerType === 'mouse' && e.button !== 0)) return;
+    pdrag = { id: it.id, btn: btn, x0: e.clientX, y0: e.clientY, pid: e.pointerId, active: false,
+      touch: e.pointerType !== 'mouse', timer: null };
+    if (pdrag.touch) pdrag.timer = setTimeout(function () { if (pdrag && !pdrag.active) beginPaletteDrag(pdrag.x0, pdrag.y0); }, 350);
+  }
+  function beginPaletteDrag(x, y) {
+    pdrag.active = true;
+    selectTool(pdrag.id);
+    var g = document.createElement('div'), src = pdrag.btn.querySelector('canvas'), cv = document.createElement('canvas');
+    cv.width = src.width; cv.height = src.height; cv.getContext('2d').drawImage(src, 0, 0);
+    g.className = 'drag-ghost'; g.appendChild(cv); document.body.appendChild(g);
+    pdrag.ghost = g;
+    moveTouchDrag(x, y);
+  }
+  // 손가락에 가리지 않도록 놓일 자리는 손가락보다 조금 위
+  function moveTouchDrag(x, y) {
+    var px = x, py = y - (pdrag.touch ? 48 : 0);
+    pdrag.ghost.style.transform = 'translate(' + (px - 28) + 'px,' + (py - 28) + 'px)';
+    var r = canvas.getBoundingClientRect();
+    var c = (px >= r.left && px <= r.right && py >= r.top && py <= r.bottom) ? toCell(px - r.left, py - r.top) : null;
+    pdrag.ghost.classList.toggle('over', !!c);
+    if ((c && (!state.hover || c.x !== state.hover.x || c.y !== state.hover.y)) || (!c && state.hover)) { state.hover = c; state.dirty = true; }
+  }
+  function finishPaletteDrag(drop) {
+    var d = pdrag; pdrag = null;
+    clearTimeout(d.timer);
+    if (!d.active) return;
+    d.ghost.remove();
+    d.btn.dataset.dragged = '1';
+    setTimeout(function () { delete d.btn.dataset.dragged; }, 400);
+    var cell = state.hover;
+    if (d.touch) state.hover = null;
+    state.dirty = true;
+    if (drop && cell) dropItem(d.id, cell);
+  }
+  function dropItem(id, cell) {
+    var b = state.board, it = L.itemById(cfg, id), r;
+    if (it.layer === 'tactile') r = L.paintTactile(b, cell.x, cell.y);
+    else if (it.layer === 'wall') r = L.placeWall(b, cfg, id, cell.x, cell.y);
+    else r = L.addObject(b, cfg, id, cell.x, cell.y, 0, state.band);
+    if (!r.ok) { warn(r.msg || '여기에는 놓을 수 없어요.'); return; }
+    if (r.index !== undefined) select(r.index);
+    changed(); save();
+    showInfo('<b>' + esc(it.name) + '</b>을(를) 놓았어요. 끌어서 옮기고, 위쪽 <b>⟳ 돌리기</b>로 방향을 바꿀 수 있어요.');
+  }
+  document.addEventListener('pointermove', function (e) {
+    if (!pdrag || e.pointerId !== pdrag.pid) return;
+    if (!pdrag.active) {
+      var dx = e.clientX - pdrag.x0, dy = e.clientY - pdrag.y0;
+      if (Math.abs(dx) + Math.abs(dy) < 10) return;
+      var vertical = getComputedStyle($('palette')).flexDirection === 'column';
+      var across = vertical ? Math.abs(dx) > Math.abs(dy) : Math.abs(dy) > Math.abs(dx);
+      clearTimeout(pdrag.timer);
+      if (!pdrag.touch || across) beginPaletteDrag(e.clientX, e.clientY);
+      else { pdrag = null; return; }   // 목록 스크롤
+    }
+    moveTouchDrag(e.clientX, e.clientY);
+  });
+  document.addEventListener('pointerup', function (e) { if (pdrag && e.pointerId === pdrag.pid) finishPaletteDrag(true); });
+  document.addEventListener('pointercancel', function (e) { if (pdrag && e.pointerId === pdrag.pid) finishPaletteDrag(false); });
+  document.addEventListener('touchmove', function (e) { if (pdrag && pdrag.active) e.preventDefault(); }, { passive: false });
 
   function selectTool(id) {
     state.tool = id;
@@ -1257,6 +1327,6 @@
   updateUndoButtons();
   setView(state.view);
   canvas.style.cursor = 'crosshair';
-  showInfo('빈 화장실이에요. 이용객은 오른쪽 아래 <b>입구</b>로 들어와요. 설비를 골라 보드에 놓고, 위쪽 이용객을 고르고 <b>▶ 테스트하기</b>로 한 명씩, <b>🏁 도전하기</b>로 모두를 시험해 보세요.');
+  showInfo('빈 화장실이에요. 이용객은 오른쪽 아래 <b>입구</b>로 들어와요. 설비를 골라 보드를 누르거나, 목록에서 보드로 <b>끌어다 놓아</b> 설치해요. 이용객을 고르고 <b>▶ 테스트하기</b>로 한 명씩, <b>🏁 도전하기</b>로 모두를 시험해 보세요.');
   requestAnimationFrame(loop);
 })();

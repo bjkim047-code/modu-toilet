@@ -247,7 +247,11 @@ tests['비상벨: 1×1, 벽 높이 3단 어디든, 단마다 따로 겹침'] = f
 
 tests['벽걸이 세면대: 가운데 단, 바닥을 막지 않음'] = function () {
   var b = L.createBoard(cfg);
-  assert.strictEqual(L.addObject(b, cfg, 'sink', 10, 6).ok, false, '벽에서 먼 칸은 안 됨');
+  // 벽에서 먼 칸에도 놓을 수 있고, 그때는 바닥에 선 것으로 봄 (바닥을 막음)
+  var far = L.addObject(b, cfg, 'sink', 10, 6);
+  assert.ok(far.ok, far.msg);
+  assert.strictEqual(L.standsOnFloor(b, cfg, b.objects[far.index]), true);
+  L.removeObject(b, far.index);
   var w = L.addObject(b, cfg, 'sink', 10, 0);              // 위쪽 벽 면을 누름 → 가운데가 x10
   assert.ok(w.ok, w.msg);
   var o = b.objects[w.index];
@@ -275,7 +279,11 @@ tests['낮은 세면대: 벽걸이 아래 단, 가운데 단 세면대와 겹침
   // 일반 세면대(가운데 단)는 같은 자리에 겹쳐 걸 수 있고, 아래 단 비상벨은 안 됨
   assert.ok(L.addObject(b, cfg, 'sink', 10, 1).ok);
   assert.strictEqual(L.addObject(b, cfg, 'bell', 10, 1, 0, 1).ok, false);
-  assert.strictEqual(L.addObject(b, cfg, 'sinkLow', 10, 7).ok, false, '벽에서 먼 칸은 안 됨');
+  // 벽에서 먼 칸에도 놓을 수 있고, 그때는 바닥에 선 것으로 봄 (바닥을 막음)
+  var far = L.addObject(b, cfg, 'sinkLow', 10, 7);
+  assert.ok(far.ok, far.msg);
+  assert.strictEqual(L.standsOnFloor(b, cfg, b.objects[far.index]), true);
+  L.removeObject(b, far.index);
   // 휠체어가 낮은 세면대 아래로 다가가 손을 씻을 수 있음
   var t = L.createBoard(cfg);
   L.addObject(t, cfg, 'toilet', 3, 2);
@@ -287,7 +295,11 @@ tests['낮은 세면대: 벽걸이 아래 단, 가운데 단 세면대와 겹침
 
 tests['기저귀 교환대·유아 의자: 벽걸이 가운데 단'] = function () {
   var b = L.createBoard(cfg);
-  assert.strictEqual(L.addObject(b, cfg, 'diaper', 10, 8).ok, false, '벽에서 먼 칸은 안 됨');
+  // 벽에서 먼 칸에도 놓을 수 있고, 그때는 바닥에 선 것으로 봄 (바닥을 막음)
+  var far = L.addObject(b, cfg, 'diaper', 10, 8);
+  assert.ok(far.ok, far.msg);
+  assert.strictEqual(L.standsOnFloor(b, cfg, b.objects[far.index]), true);
+  L.removeObject(b, far.index);
   var d = L.addObject(b, cfg, 'diaper', 10, 0);
   assert.ok(d.ok, d.msg);
   assert.deepStrictEqual(L.sizeOf(cfg, b.objects[d.index]), { w: 3, h: 2 });
@@ -423,8 +435,11 @@ tests['기저귀 교환대: 앞쪽 벽(아래·오른쪽)에도 붙음, 입구 �
   assert.ok(r.ok, r.msg);
   o = b.objects[r.index]; s = L.sizeOf(cfg, o);
   assert.strictEqual(o.rot, 1); assert.strictEqual(o.x + s.w, C - 1);
-  // 입구(x14~17) 앞은 안 됨
-  assert.strictEqual(L.addObject(b, cfg, 'diaper', 15, R - 1).ok, false);
+  // 입구(x14~17) 앞 벽에는 붙지 않음: 놓으면 벽에 붙지 않고 바닥에 선 것으로 봄
+  var ent = L.addObject(b, cfg, 'diaper', 15, R - 1);
+  assert.ok(ent.ok);
+  assert.strictEqual(L.onWall(b, cfg, b.objects[ent.index]), false);
+  L.removeObject(b, ent.index);
   // 다른 벽걸이(휴지걸이)는 여전히 뒤쪽 벽만
   assert.strictEqual(L.addObject(b, cfg, 'paperHolder', 6, R - 1).ok, false);
   // 아래-왼쪽 모서리에서 돌리면 왼쪽 벽으로
@@ -440,6 +455,31 @@ tests['기저귀 교환대: 앞쪽 벽(아래·오른쪽)에도 붙음, 입구 �
   assert.strictEqual(fam.ok, true, fam.reason);
   var dz = t.objects.filter(function (q) { return q.id === 'diaper'; })[0];
   assert.ok(fam.path.some(function (q) { return q.face === 'front_b' && q.y + 2 === dz.y; }), 'faces diaper on bottom wall');
+};
+
+tests['벽걸이 설비를 방 가운데에 놓으면 바닥을 막고, 제자리에서 네 방향으로 돌아감'] = function () {
+  var b = L.createBoard(cfg);
+  var s = L.addObject(b, cfg, 'sink', 9, 7);
+  assert.ok(s.ok, s.msg);
+  var o = b.objects[s.index];
+  assert.strictEqual(L.standsOnFloor(b, cfg, o), true);
+  // 바닥 설비와 겹칠 수 없음
+  assert.strictEqual(L.addObject(b, cfg, 'toilet', 9, 7).ok, false);
+  // 제자리에서 네 방향
+  var seen = [o.rot];
+  for (var k = 0; k < 3; k++) { assert.ok(L.rotateObject(b, cfg, s.index).ok); seen.push(b.objects[s.index].rot); }
+  assert.deepStrictEqual(seen.slice().sort(), [0, 1, 2, 3]);
+  // 벽 쪽으로 끌면 다시 벽에 붙음
+  assert.ok(L.moveObject(b, cfg, s.index, 9, 0).ok);
+  assert.strictEqual(L.onWall(b, cfg, b.objects[s.index]), true);
+  // 지나갈 수 없음: 방 가운데를 가로막으면 길이 막힘
+  var t = L.createBoard(cfg);
+  L.addObject(t, cfg, 'toilet', 3, 2);
+  for (var x = 1; x <= 18; x += 3) t.objects.push({ id: 'sink', x: x, y: 6, rot: 0, band: 2 });
+  var r = L.evaluate(t, cfg).filter(function (q) { return q.id === 'trans'; })[0];
+  assert.strictEqual(r.ok, false, '가로막힌 세면대 줄을 통과하면 안 됨');
+  // 비상벨·휴지걸이 같은 다른 벽걸이는 여전히 벽에만
+  assert.strictEqual(L.addObject(b, cfg, 'paperHolder', 9, 10).ok, false);
 };
 
 var failed = 0;

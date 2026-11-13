@@ -42,13 +42,13 @@ var MODU_CONFIG = {
     // 실제 약 35 × 50cm
     { id: 'childToilet', name: '아동용 변기', layer: 'floor', group: '설비', w: 2, h: 2, rotations: [0, 3, 2, 1], emoji: '🚽', color: '#fff3c4',
       desc: '아이 몸에 맞는 작은 변기예요. 보호자와 함께 온 아이가 혼자 앉을 수 있어요.' },
-    { id: 'sink', name: '세면대', layer: 'floor', mount: true, bands: [2], group: '설비', w: 3, h: 2, rotations: [0, 3, 2, 1], anchor: 'center', isoW: 2.3, emoji: '🚰', color: '#ffffff',
+    { id: 'sink', name: '세면대', layer: 'floor', mount: true, free: true, bands: [2], group: '설비', w: 3, h: 2, rotations: [0, 3, 2, 1], anchor: 'center', isoW: 2.3, emoji: '🚰', color: '#ffffff',
       desc: '벽에 거는 세면대예요. 네 벽 어디든(입구 앞 제외) 바로 옆에 가운데 높이로 붙고, 아래가 비어 있어 휠체어도 다가갈 수 있어요.' },
-    { id: 'sinkLow', name: '낮은 세면대', layer: 'floor', mount: true, bands: [1], group: '설비', w: 3, h: 2, rotations: [0, 3, 2, 1], anchor: 'center', isoW: 2.3, emoji: '🚰', color: '#cfeee6',
+    { id: 'sinkLow', name: '낮은 세면대', layer: 'floor', mount: true, free: true, bands: [1], group: '설비', w: 3, h: 2, rotations: [0, 3, 2, 1], anchor: 'center', isoW: 2.3, emoji: '🚰', color: '#cfeee6',
       desc: '벽 아래 단에 거는 낮은 세면대예요. 네 벽 어디든(입구 앞 제외) 붙어요. 앉은 채로 손이 닿고, 아래가 비어 있어 휠체어 무릎이 들어가요. 어린이도 편해요.' },
-    { id: 'diaper', name: '기저귀 교환대', layer: 'floor', mount: true, bands: [2], group: '설비', w: 3, h: 2, rotations: [0, 3, 2, 1], anchor: 'center', isoW: 2.3, emoji: '👶', color: '#fde9cf',
+    { id: 'diaper', name: '기저귀 교환대', layer: 'floor', mount: true, free: true, bands: [2], group: '설비', w: 3, h: 2, rotations: [0, 3, 2, 1], anchor: 'center', isoW: 2.3, emoji: '👶', color: '#fde9cf',
       desc: '벽에 거는 접이식 교환대예요. 네 벽 어디든(입구 앞 제외) 바로 옆에 가운데 높이로 붙어요. 아이를 돌보는 보호자는 성별과 상관없이 필요해요.' },
-    { id: 'babySeat', name: '유아 의자', layer: 'floor', mount: true, bands: [2], group: '설비', w: 1, h: 2, rotations: [0, 3, 2, 1], anchor: 'center', isoW: 1.05, emoji: '🪑', color: '#fde9cf',
+    { id: 'babySeat', name: '유아 의자', layer: 'floor', mount: true, free: true, bands: [2], group: '설비', w: 1, h: 2, rotations: [0, 3, 2, 1], anchor: 'center', isoW: 1.05, emoji: '🪑', color: '#fde9cf',
       desc: '벽에 거는 접이식 의자예요. 보호자가 볼일을 보는 동안 아이가 앉아 기다려요. 네 벽 어디든(입구 앞 제외) 바로 옆에 가운데 높이로 붙어요.' },
     // 실제 제품은 약 가로 60 × 깊이 65cm. 벽 판까지 생각해 벽을 따라 3칸, 깊이 2칸
     { id: 'ostomy', name: '오스토미 세척대', layer: 'floor', group: '설비', w: 3, h: 2, rotations: [0, 3, 2, 1], emoji: '🚿', color: '#dfe9fb',
@@ -58,6 +58,7 @@ var MODU_CONFIG = {
 
     { id: 'braille', name: '점자 안내판', layer: 'wall', group: '벽에 붙이기',
       desc: '입구 옆 바깥 벽에 붙여 주세요. 손으로 읽는 안내판이에요.' },
+    // free: 벽걸이 물건이지만 벽에서 떨어진 바닥 어디든 놓을 수 있음 (그때는 바닥을 막음)
     // mount: 뒤쪽 벽 바로 옆 칸의 벽에 붙는 물건. bands: 붙일 수 있는 벽 높이 단 (1=아래, 2=가운데, 3=위)
     //   높이 단이 다르면 같은 칸에 겹쳐 놓을 수 있고, 바닥 설비와도 겹칠 수 있음
     { id: 'bell', name: '비상벨', layer: 'floor', mount: true, bands: [1, 2, 3], group: '벽에 붙이기', w: 1, h: 1, rotations: [0, 3], along: true, isoW: 0.42, emoji: '🚨', color: '#ffffff',

@@ -59,7 +59,10 @@ var ModuLogic = (function () {
     var g = grid(b.cols, b.rows, -1);
     level = level || 'floor';
     b.objects.forEach(function (o, i) {
-      if (i === skip || levelOf(cfg, o) !== level) return;
+      if (i === skip) return;
+      // 벽에서 떨어져 바닥에 놓인 벽걸이 물건은 바닥 층도 차지함 (사람이 지나갈 수 없음)
+      var lv = levelOf(cfg, o);
+      if (lv !== level && !(level === 'floor' && standsOnFloor(b, cfg, o))) return;
       cellsOf(cfg, o).forEach(function (c) { if (inside(b, c.x, c.y)) g[c.y][c.x] = i; });
     });
     return g;
@@ -78,6 +81,9 @@ var ModuLogic = (function () {
   }
 
   // 벽 가운데 단 물건이 붙는 벽: 방향 0은 위쪽 벽(y=0), 3은 왼쪽 벽(x=0)
+  // free 물건(벽걸이지만 어디든 놓을 수 있음)이 벽에서 떨어져 있으면 바닥에 선 것으로 봄
+  function standsOnFloor(b, cfg, o) { return isMounted(cfg, o) && !!itemById(cfg, o.id).free && !onWall(b, cfg, o); }
+
   // 벽에 붙는 물건이 제 벽 바로 옆에 있는지. 방향 0: 위쪽 벽, 3: 왼쪽 벽 (뒤쪽 벽)
   // 방향 2: 아래쪽 벽, 1: 오른쪽 벽 (앞쪽 벽, rotations에 넣은 물건만). 입구 앞은 안 됨
   function onWall(b, cfg, o) {
@@ -100,7 +106,11 @@ var ModuLogic = (function () {
       if (!interior(b, cs[i].x, cs[i].y)) return { ok: false, msg: '화장실 안쪽에만 놓을 수 있어요.' };
       if (occ[cs[i].y][cs[i].x] !== -1) return { ok: false, msg: level !== 'floor' ? '같은 높이에 다른 물건이 있어요.' : '다른 설비와 겹쳐요.' };
     }
-    if (level !== 'floor' && !onWall(b, cfg, o)) {
+    if (standsOnFloor(b, cfg, o)) {
+      var fo = occupancy(b, cfg, skip, 'floor');
+      for (var j = 0; j < cs.length; j++) if (fo[cs[j].y][cs[j].x] !== -1) return { ok: false, msg: '다른 설비와 겹쳐요.' };
+    }
+    if (level !== 'floor' && !itemById(cfg, o.id).free && !onWall(b, cfg, o)) {
       var front = (itemById(cfg, o.id).rotations || []).some(function (r) { return r === 1 || r === 2; });
       return { ok: false, msg: itemById(cfg, o.id).name + '은(는) ' + (front ? '벽 바로 옆 칸(입구 앞 제외)' : '뒤쪽 벽 바로 옆 칸') + '에만 붙일 수 있어요.' };
     }
@@ -141,9 +151,16 @@ var ModuLogic = (function () {
     var o = { id: id, x: 0, y: 0, rot: it.rotatable === false ? 0 : (rot || 0) };
     if (it.mount) {
       o.band = it.bands.indexOf(band) !== -1 ? band : it.bands[0];
-      snapToWall(b, cfg, o, cx, cy);
+      var ms;
+      if (!snapToWall(b, cfg, o, cx, cy) && it.free) {
+        // 벽에서 떨어진 칸: 바닥 설비처럼 누른 칸이 가운데가 되도록
+        ms = sizeOf(cfg, o);
+        o.x = cx - Math.floor((ms.w - 1) / 2); o.y = cy - Math.floor((ms.h - 1) / 2);
+        clampIn(b, cfg, o);
+        return o;
+      }
       // 벽을 따라 긴 물건은 누른 칸이 가운데가 되도록
-      var ms = sizeOf(cfg, o);
+      ms = sizeOf(cfg, o);
       if (o.rot % 2 === 0) o.x -= Math.floor((ms.w - 1) / 2); else o.y -= Math.floor((ms.h - 1) / 2);
       clampIn(b, cfg, o);
       return o;
@@ -168,7 +185,10 @@ var ModuLogic = (function () {
   function moveObject(b, cfg, i, x, y) {
     var o = b.objects[i];
     var n = { id: o.id, x: x, y: y, rot: o.rot, band: o.band };
-    if (isMounted(cfg, o) && !snapToWall(b, cfg, n, x, y)) return { ok: false };
+    if (isMounted(cfg, o) && !snapToWall(b, cfg, n, x, y)) {
+      if (!itemById(cfg, o.id).free) return { ok: false };
+      n.x = x; n.y = y; n.rot = o.rot;  // free 물건은 방향을 그대로 두고 옮김
+    }
     clampIn(b, cfg, n);
     if (n.x === o.x && n.y === o.y && n.rot === o.rot) return { ok: false };
     var f = fits(b, cfg, n, i);
@@ -182,7 +202,10 @@ var ModuLogic = (function () {
     var it = itemById(cfg, o.id);
     if (it.rotatable === false) return { ok: false, msg: it.name + '은(는) 방향을 바꿀 수 없어요.' };
     var rots = it.rotations || [0, 1, 2, 3];
-    if (isMounted(cfg, o)) return rotateMounted(b, cfg, i, rots);
+    if (isMounted(cfg, o) && onWall(b, cfg, o)) {
+      var rm = rotateMounted(b, cfg, i, rots);
+      if (rm.ok || !it.free) return rm;   // free 물건은 모서리가 아니면 제자리에서 돌림
+    }
     var s = sizeOf(cfg, o);
     var n = { id: o.id, x: 0, y: 0, rot: rots[(rots.indexOf(o.rot) + 1) % rots.length], band: o.band };
     var ns = sizeOf(cfg, n);
@@ -471,7 +494,7 @@ var ModuLogic = (function () {
   return {
     createBoard: createBoard, itemById: itemById, isBorder: isBorder, isEntrance: isEntrance,
     sizeOf: sizeOf, cellsOf: cellsOf, objectAt: objectAt, fits: fits, levelOf: levelOf, placement: placement,
-    isMounted: isMounted, bandOf: bandOf, cycleBand: cycleBand,
+    isMounted: isMounted, bandOf: bandOf, cycleBand: cycleBand, onWall: onWall, standsOnFloor: standsOnFloor,
     addObject: addObject, moveObject: moveObject, rotateObject: rotateObject, removeObject: removeObject,
     eraseAt: eraseAt, paintTactile: paintTactile, placeWall: placeWall, evaluate: evaluate
   };
