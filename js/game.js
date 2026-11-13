@@ -982,8 +982,12 @@
     if (it.layer === 'tactile') { w = s; anchor = 'center'; }
     else if (it.layer === 'wall') w = s * 0.75;
     else if (it.mount) w = s * (it.isoW || 0.85);
-    else w = (it.w + it.h) * s / 2;
-    w = Math.max(w, 36);
+    else if (img) {
+      // 바닥 설비: drawIsoObject와 같은 계산 (자리 너비와 높이 한도 중 작은 쪽에 맞춤)
+      var maxW = (it.w + it.h) * s / 2, z = (ISO_H[id] || 0.8) * s;
+      var maxH = (it.w + it.h) * s / 4 + z * (images['iso:' + id + ':a'] ? 1.5 : 1.3);
+      w = img.width * Math.min(maxW / img.width, maxH / img.height);
+    } else w = (it.w + it.h) * s / 2;
     var el = document.createElement('canvas'), h, d = window.devicePixelRatio || 1;
     if (img) {
       h = w * img.height / img.width;
