@@ -613,7 +613,7 @@
           if (hit) d = Math.max(d, depthOf(f) + 0.01);
         });
       }
-      items.push({ d: d, draw: drawIsoObject.bind(null, o, s, undefined) });
+      items.push({ d: d, oi: oi, draw: drawIsoObject.bind(null, o, s, undefined) });
     });
     if (ghost && ghost.ok && !state.paletteDragging) items.push({ d: 999, draw: drawIsoObject.bind(null, ghost, s, 0.5) });
     var rv = state.run ? runVisitor() : null;
@@ -627,6 +627,9 @@
       items.push({ d: rv.wx + rv.wy, draw: function () { drawVisitor(rv.v, vp.x, vp.y, vsize, rv.face); } });
     }
     items.sort(function (a, c) { return a.d - c.d; });
+    // 그려진 순서(뒤 → 앞)를 기억해 두었다가, 누른 곳의 물건을 그림 기준으로 찾을 때 씀
+    state.drawOrder = items.filter(function (it) { return it.oi !== undefined; }).map(function (it) { return it.oi; });
+    state.drawScale = s;
     items.forEach(function (it) { it.draw(); });
     // 끄는 중인 물건: 놓일 자리 테두리 + 손가락을 따라 자유롭게 움직이는 물건
     if (dragI !== -1 && b.objects[dragI]) {
@@ -1145,7 +1148,8 @@
     var b = state.board, it = L.itemById(cfg, state.tool);
     // 선택 도구: 누른 칸의 설비(벽 물건 먼저)를 고르고 끌어서 옮김. 빈 곳이면 선택 해제
     if (it.id === 'select') {
-      var si = L.objectAt(b, cfg, cell.x, cell.y);
+      var si = pickObjectAt(state.lastPt);
+      if (si === -1) si = L.objectAt(b, cfg, cell.x, cell.y);
       if (si === -1) { select(-1); return null; }
       select(si);
       var so = b.objects[si];
@@ -1192,14 +1196,41 @@
     return -1;
   }
 
+  // 누른 화면 위치(보드 캔버스 기준)에 실제로 그려진 물건 찾기: 앞에 그려진 것부터, 그림의 불투명한 픽셀 기준
+  var hitCanvas = document.createElement('canvas'), hitCtx = hitCanvas.getContext('2d', { willReadFrequently: true });
+  function pickObjectAt(pt) {
+    if (!pt || !state.drawOrder || state.view !== 'iso') return -1;
+    var b = state.board, s = state.drawScale;
+    hitCanvas.width = 3; hitCanvas.height = 3;
+    var main = ctx;
+    try {
+      ctx = hitCtx;
+      for (var k = state.drawOrder.length - 1; k >= 0; k--) {
+        var i = state.drawOrder[k], o = b.objects[i];
+        if (!o) continue;
+        hitCtx.setTransform(1, 0, 0, 1, 0, 0);
+        hitCtx.clearRect(0, 0, 3, 3);
+        // 누른 점이 (1,1)에 오도록 옮겨서 그 물건 하나만 그려 봄
+        hitCtx.setTransform(1, 0, 0, 1, state.tx - pt.x + 1, state.ty - pt.y + 1);
+        drawIsoObject(o, s);
+        if (hitCtx.getImageData(1, 1, 1, 1).data[3] > 100) return i;   // 옅은 그림자는 빼고
+      }
+    } finally { ctx = main; }
+    return -1;
+  }
+
   function brush(g, cell) {
     if (!cell) return;
     var k = cell.x + ',' + cell.y;
-    if (g.done[k]) return;
+    if (g.done[k] && !(state.tool === 'eraser' && pickObjectAt(state.lastPt) !== -1)) return;
     g.done[k] = true;
-    var r = state.tool === 'eraser'
-      ? L.eraseAt(state.board, cfg, cell.x, cell.y)
-      : L.paintTactile(state.board, cell.x, cell.y);
+    var r;
+    if (state.tool === 'eraser') {
+      // 지우개는 먼저 손가락 아래에 그려진 물건(그림 기준)을 지우고, 없으면 그 칸의 벽 물건·점자블록을 지움
+      var hit = pickObjectAt(state.lastPt);
+      if (hit !== -1) { L.removeObject(state.board, hit); r = { ok: true }; }
+      else r = L.eraseAt(state.board, cfg, cell.x, cell.y);
+    } else r = L.paintTactile(state.board, cell.x, cell.y);
     if (r.ok) { g.changed = true; if (state.tool === 'eraser') select(-1); changed(); }
     else if (r.msg && !g.warned) { g.warned = true; warn(r.msg); }
   }
@@ -1228,7 +1259,14 @@
     if (list.length === 1) {
       if (state.pan || e.button === 1 || e.button === 2) gesture = { type: 'pan', last: list[0] };
       else {
-        gesture = pressStart(toCell(list[0].x, list[0].y));
+        state.lastPt = list[0];
+        var pc = toCell(list[0].x, list[0].y);
+        // 바닥 칸 밖으로 솟은 그림(변기 물탱크 등)을 눌러도 그 물건으로
+        if (!pc && (state.tool === 'select' || state.tool === 'eraser')) {
+          var po = state.board.objects[pickObjectAt(list[0])];
+          if (po) pc = { x: po.x, y: po.y };
+        }
+        gesture = pressStart(pc);
         if (gesture && gesture.type === 'move') {
           var mo = state.board.objects[gesture.index];
           state.drag = gesture; gesture.p0 = list[0]; gesture.p = list[0]; gesture.o0 = { x: mo.x, y: mo.y }; gesture.moved = false;
@@ -1255,6 +1293,7 @@
         if (Math.abs(p.x - gesture.p0.x) + Math.abs(p.y - gesture.p0.y) > 6) gesture.moved = true;
         state.dirty = true;
       }
+      state.lastPt = p;
       pressMove(gesture, toCell(p.x, p.y));
     } else if (gesture.type === 'pan' && list.length === 1) {
       state.cam.ox += p.x - gesture.last.x; state.cam.oy += p.y - gesture.last.y;
