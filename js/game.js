@@ -595,7 +595,9 @@
 
     // 뒤에 있는 것부터 그림
     var depthOf = function (o) { var sz = L.sizeOf(cfg, o); return o.x + o.y + (sz.w + sz.h) / 2; };
-    b.objects.forEach(function (o) {
+    var dragI = state.drag && state.drag.moved ? state.drag.index : -1;
+    b.objects.forEach(function (o, oi) {
+      if (oi === dragI) return;   // 끄는 중인 물건은 맨 위에 따로 그림
       var d = depthOf(o);
       if (L.isMounted(cfg, o) && !L.standsOnFloor(b, cfg, o)) {
         // 벽에 붙은 물건은 벽 바로 앞 깊이(높은 단이 나중에). 같은 칸에 바닥 설비가 있으면 그보다 앞에 그려서 보이게 함
@@ -613,7 +615,7 @@
       }
       items.push({ d: d, draw: drawIsoObject.bind(null, o, s, undefined) });
     });
-    if (ghost && ghost.ok) items.push({ d: 999, draw: drawIsoObject.bind(null, ghost, s, 0.5) });
+    if (ghost && ghost.ok && !state.paletteDragging) items.push({ d: 999, draw: drawIsoObject.bind(null, ghost, s, 0.5) });
     var rv = state.run ? runVisitor() : null;
     var vp = null, vsize = s * (rv && rv.r.size === 3 ? 1.9 : 1.4);
     if (rv) {
@@ -626,6 +628,17 @@
     }
     items.sort(function (a, c) { return a.d - c.d; });
     items.forEach(function (it) { it.draw(); });
+    // 끄는 중인 물건: 놓일 자리 테두리 + 손가락을 따라 자유롭게 움직이는 물건
+    if (dragI !== -1 && b.objects[dragI]) {
+      var dg = state.drag, dob = b.objects[dragI], dsz = L.sizeOf(cfg, dob);
+      polygon(corners(dob.x, dob.y, dsz.w, dsz.h, s));
+      ctx.strokeStyle = '#1d5fb8'; ctx.lineWidth = 2; ctx.setLineDash([6, 4]); ctx.stroke(); ctx.setLineDash([]);
+      var pa = P(dob.x, dob.y, s), pb = P(dg.o0.x, dg.o0.y, s);
+      ctx.save();
+      ctx.translate((dg.p.x - dg.p0.x) - (pa.x - pb.x), (dg.p.y - dg.p0.y) - (pa.y - pb.y));
+      drawIsoObject(dob, s, 0.95);
+      ctx.restore();
+    }
     if (rv && rv.arrived) drawBubble(rv.r.reason, vp.x, headTop(rv.v, vp.y, vsize) - s * 0.1, s, rv.r.ok);
   }
 
@@ -950,16 +963,43 @@
   function beginPaletteDrag(x, y) {
     pdrag.active = true;
     selectTool(pdrag.id);
-    var g = document.createElement('div'), src = pdrag.btn.querySelector('canvas'), cv = document.createElement('canvas');
-    cv.width = src.width; cv.height = src.height; cv.getContext('2d').drawImage(src, 0, 0);
-    g.className = 'drag-ghost'; g.appendChild(cv); document.body.appendChild(g);
-    pdrag.ghost = g;
+    var g = document.createElement('div');
+    g.className = 'drag-ghost';
+    var gi = objectGhostImage(pdrag.id);
+    g.appendChild(gi.el); g.style.width = gi.w + 'px'; g.style.height = gi.h + 'px';
+    document.body.appendChild(g);
+    pdrag.ghost = g; pdrag.gw = gi.w; pdrag.gh = gi.h; pdrag.anchor = gi.anchor;
+    state.paletteDragging = true;
     moveTouchDrag(x, y);
   }
-  // 손가락에 가리지 않도록 놓일 자리는 손가락보다 조금 위
+  // 보드에 놓였을 때와 같은 크기·모양의 그림 (흰 바탕 없이)
+  function objectGhostImage(id) {
+    var it = L.itemById(cfg, id), s = state.cam.scale;
+    var img = images['iso:' + id + ':a'] || images['item:' + id], w, anchor = 'bottom';
+    if (it.layer === 'tactile') { w = s; anchor = 'center'; }
+    else if (it.layer === 'wall') w = s * 0.75;
+    else if (it.mount) w = s * (it.isoW || 0.85);
+    else w = (it.w + it.h) * s / 2;
+    w = Math.max(w, 36);
+    var el = document.createElement('canvas'), h, d = window.devicePixelRatio || 1;
+    if (img) {
+      h = w * img.height / img.width;
+      el.width = Math.round(w * d); el.height = Math.round(h * d);
+      el.getContext('2d').drawImage(img, 0, 0, el.width, el.height);
+    } else {
+      // 그림이 없는 물건은 팔레트 그림을 그대로 (바탕 없이)
+      var src = document.querySelector('.tool[data-id="' + id + '"] canvas');
+      h = w; el.width = src.width; el.height = src.height; el.getContext('2d').drawImage(src, 0, 0);
+      anchor = 'center';
+    }
+    el.style.width = w + 'px'; el.style.height = h + 'px';
+    return { el: el, w: w, h: h, anchor: anchor };
+  }
+  // 손가락에 가리지 않도록 놓일 자리는 손가락보다 조금 위. 그림은 칸에 붙지 않고 손가락을 그대로 따라감
   function moveTouchDrag(x, y) {
     var px = x, py = y - (pdrag.touch ? 48 : 0);
-    pdrag.ghost.style.transform = 'translate(' + (px - 28) + 'px,' + (py - 28) + 'px)';
+    var gy = pdrag.anchor === 'bottom' ? py - pdrag.gh * 0.85 : py - pdrag.gh / 2;
+    pdrag.ghost.style.transform = 'translate(' + (px - pdrag.gw / 2) + 'px,' + gy + 'px)';
     var r = canvas.getBoundingClientRect();
     var c = (px >= r.left && px <= r.right && py >= r.top && py <= r.bottom) ? toCell(px - r.left, py - r.top) : null;
     pdrag.ghost.classList.toggle('over', !!c);
@@ -970,6 +1010,7 @@
     clearTimeout(d.timer);
     if (!d.active) return;
     d.ghost.remove();
+    state.paletteDragging = false;
     d.btn.dataset.dragged = '1';
     setTimeout(function () { delete d.btn.dataset.dragged; }, 400);
     var cell = state.hover;
@@ -1186,7 +1227,13 @@
     var list = pointerList();
     if (list.length === 1) {
       if (state.pan || e.button === 1 || e.button === 2) gesture = { type: 'pan', last: list[0] };
-      else gesture = pressStart(toCell(list[0].x, list[0].y));
+      else {
+        gesture = pressStart(toCell(list[0].x, list[0].y));
+        if (gesture && gesture.type === 'move') {
+          var mo = state.board.objects[gesture.index];
+          state.drag = gesture; gesture.p0 = list[0]; gesture.p = list[0]; gesture.o0 = { x: mo.x, y: mo.y }; gesture.moved = false;
+        }
+      }
     } else if (list.length === 2) {
       var a = list[0], b = list[1];
       gesture = { type: 'pinch', d: Math.hypot(a.x - b.x, a.y - b.y), mid: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }, wasChanged: gesture && gesture.changed };
@@ -1203,6 +1250,11 @@
     if (!gesture) return;
     var list = pointerList();
     if ((gesture.type === 'brush' || gesture.type === 'move') && list.length === 1) {
+      if (gesture.type === 'move') {
+        gesture.p = p;
+        if (Math.abs(p.x - gesture.p0.x) + Math.abs(p.y - gesture.p0.y) > 6) gesture.moved = true;
+        state.dirty = true;
+      }
       pressMove(gesture, toCell(p.x, p.y));
     } else if (gesture.type === 'pan' && list.length === 1) {
       state.cam.ox += p.x - gesture.last.x; state.cam.oy += p.y - gesture.last.y;
@@ -1221,6 +1273,7 @@
     if (Object.keys(pointers).length === 0) {
       if (gesture && (gesture.changed || gesture.wasChanged)) save();
       gesture = null;
+      if (state.drag) { state.drag = null; state.dirty = true; }
     }
   }
   canvas.addEventListener('pointerup', endPointer);
